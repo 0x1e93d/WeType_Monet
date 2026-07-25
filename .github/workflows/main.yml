@@ -1,0 +1,53 @@
+name: Test Build Script
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - 'src/**'
+      - 'module_template/**'
+      - 'scripts/build.py'
+      - '.github/workflows/test_build.yml'
+  pull_request:
+    branches:
+      - main
+      - master
+  workflow_dispatch: # 支持在 Actions 页面手动点击触发运行
+
+jobs:
+  test-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 拉取仓库代码
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 完整拉取 commit 历史，以便读取正确的 git commit count 作为 versionCode
+
+      # 2. 配置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      # 3. 配置 Java 环境 (apksigner / keytool 依赖 Java 环境)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      # 4. 执行构建脚本
+      - name: Run Build Script
+        run: python scripts/build.py
+
+      # 5. 上传测试构建产物 (Zip 包)
+      - name: Upload Test Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WetypeMonet-Test-Build
+          path: out/*.zip
+          retention-days: 7 # 测试产物保留 7 天
