@@ -180,7 +180,11 @@ def build_overlay_apk():
         "--dir", res_dir,
         "-o", compiled_zip
     ]
-    subprocess.run(compile_cmd, check=True)
+    res_compile = subprocess.run(compile_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    if res_compile.returncode != 0:
+        print("\n[!] aapt2 compile 编译错误：")
+        print(res_compile.stderr or res_compile.stdout)
+        raise RuntimeError("aapt2 compile 失败")
 
     # 2. 资源链接 (aapt2 link)
     print("[2/2] 正在链接生成 Overlay APK (aapt2 link)...")
@@ -190,16 +194,24 @@ def build_overlay_apk():
         "--manifest", manifest_xml,
         "-o", unsigned_apk,
         compiled_zip,
-        "--auto-add-overlay"
+        "--auto-add-overlay",
+        "--min-sdk-version", "26",
+        "--target-sdk-version", "35"
     ]
-    subprocess.run(link_cmd, check=True)
+    res_link = subprocess.run(link_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    if res_link.returncode != 0:
+        print("\n" + "=" * 50)
+        print("[!] AAPT2 Link 详细报错信息如下：")
+        print("=" * 50)
+        print(res_link.stderr or res_link.stdout)
+        print("=" * 50 + "\n")
+        raise RuntimeError("aapt2 link 失败，请检查上方具体的 AAPT2 报错提示。")
 
     # 3. 清理编译临时文件
     if os.path.exists(compiled_zip):
         os.remove(compiled_zip)
 
     print(f"[✓] Overlay APK 生成成功: {unsigned_apk}")
-
 
 # ==================== 执行入口 ====================
 

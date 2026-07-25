@@ -5,7 +5,7 @@
     android:viewportWidth="64.0"
     android:viewportHeight="64.0">
     <path
-        android:fillColor="@7f0601cc"
+        android:fillColor="@color/ime_key_back_icon_color"
         android:pathData="M23.975,48L27.36,44.521L17.301,34.445L56.001,34.445L56.001,29.555L17.301,29.555L27.36,19.479L23.975,16L8.001,32L23.975,48Z"
         android:fillType="evenOdd" />
 </vector>
