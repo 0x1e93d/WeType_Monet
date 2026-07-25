@@ -1,96 +1,549 @@
-<?xml version="1.0" encoding="utf-8"?>
+<?xml version='1.0' encoding='utf-8' ?>
 <resources>
     <color name="White">@android:color/system_on_surface_light</color>
-    <color name="ds">@android:color/system_primary_dark</color>
-    <color name="dt">@android:color/system_primary_light</color>
     <color name="ime_key_back_icon_color">@android:color/system_on_surface_light</color>
-    <color name="f3">@android:color/system_on_surface_light</color>
-    <color name="f7">@android:color/system_secondary_container_light</color>
-    <color name="fi">@android:color/system_surface_container_light</color>
-    <color name="fn">@android:color/system_on_surface_light</color>
-    <color name="g8">@android:color/system_surface_container_light</color>
-    <color name="ga">@android:color/system_on_surface_light</color>
+
+
+
+    <!-- Light color -->
+    <!-- ime_skin_candidate_start_color = 0x7f06021c; -->
+    <!-- The upper part of the background color -->
+    <!-- 背景色上部分 -->
+    <!-- Bubble background color, special function key font color -->
+    <!-- 气泡背景颜色、特殊功能键字体颜色 -->
     <color name="gb">@android:color/system_surface_container_light</color>
-    <color name="gd">#00000000</color>
-    <color name="gg">@android:color/system_surface_container_lowest_light</color>
-    <color name="gk">#00000000</color>
-    <color name="gl">#00000000</color>
-    <color name="go">@android:color/system_on_surface_light</color>
-    <color name="gq">@android:color/system_on_surface_light</color>
-    <color name="gr">@android:color/system_on_surface_light</color>
-    <color name="gs">@android:color/system_on_surface_light</color>
-    <color name="gt">@android:color/system_on_surface_light</color>
-    <color name="gv">#00000000</color>
-    <color name="gw">@android:color/system_surface_container_low_light</color>
-    <color name="h6">@android:color/system_surface_container_lowest_light</color>
-    <color name="h7">@android:color/system_secondary_container_light</color>
-    <color name="h_">@android:color/system_secondary_container_light</color>
-    <color name="ha">@android:color/system_secondary_light</color>
-    <color name="hd">@android:color/system_surface_container_lowest_light</color>
-    <color name="he">@android:color/system_secondary_container_light</color>
-    <color name="hf">@android:color/system_surface_container_lowest_light</color>
-    <color name="hg">@android:color/system_on_surface_light</color>
-    <color name="hk">@android:color/system_secondary_container_light</color>
-    <color name="hl">#00000000</color>
-    <color name="hn">#00000000</color>
-    <color name="hr">#00000000</color>
-    <color name="ht">#00000000</color>
-    <color name="hx">@android:color/system_surface_container_lowest_light</color>
-    <color name="hy">#00000000</color>
-    <color name="i0">#00000000</color>
-    <color name="i1">@android:color/system_on_surface_light</color>
-    <color name="ka">@android:color/system_surface_container_dark</color>
-    <color name="kn">@android:color/system_on_surface_dark</color>
-    <color name="kp">@android:color/system_on_surface_dark</color>
-    <color name="kq">@android:color/system_on_surface_dark</color>
-    <color name="ks">@android:color/system_on_surface_dark</color>
-    <color name="kt">@android:color/system_on_surface_dark</color>
-    <color name="l_">@android:color/system_surface_container_highest_dark</color>
-    <color name="la">@android:color/system_secondary_container_dark</color>
-    <color name="lh">#00000000</color>
-    <color name="ln">#00000000</color>
-    <color name="lu">#00000000</color>
+
+    <!-- ime_skin_candidate_end_color = 0x7f060218; -->
+    <!-- Background color middle part -->
+    <!-- 背景色中间部分 -->
+    <color name="g8">@android:color/system_surface_container_light</color>
+
+    <!-- ime_skin_keyboard_end_color = 0x7f06037c; -->
+    <!-- The lower part of the background color -->
+    <!-- 背景色下部分 -->
     <color name="pu">@android:color/system_surface_container_light</color>
+
+    <!-- ime_skin_keyboard_background = 0x7f06037a; -->
+    <!-- Floating window background color -->
+    <!-- 悬浮窗背景色 -->
     <color name="ps">@android:color/system_surface_container_light</color>
+
+    <!-- ime_skin_black = 0x7f060203; -->
+    <!-- Menu page icon color -->
+    <!-- 菜单页面图标颜色 -->
+    <color name="fn">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_06 = 0x7f06022d; -->
+    <!-- Menu page text color -->
+    <!-- 菜单页面文字颜色 -->
+    <!-- Commonly used phrases "Enter the first 3 characters..." Font color -->
+    <!-- 常用语 “输入前3个字……” 字体颜色 -->
+    <!-- Translation container Tab bar font color -->
+    <!-- 翻译容器Tab栏字体颜色 -->
+    <!-- Font color at the top of the emoticon interface -->
+    <!-- 表情界面顶部字体颜色 -->
+    <color name="gs">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_18 = 0x7f060245; -->
+    <!-- Word segmentation interface container background color -->
+    <!-- 分词界面容器背景颜色 -->
+    <!-- Menu page icon background color -->
+    <!-- 菜单页面图标背景颜色 -->
+    <color name="hf">@android:color/system_surface_container_lowest_light</color>
+
+    <!-- ime_skin_clipboard_item_bg_color = 0x7f060221; -->
+    <!-- Clipboard item background color -->
+    <!-- 剪切板项目背景色 -->
+    <color name="gg">@android:color/system_surface_container_lowest_light</color>
+
+    <!-- ime_skin_candidate_right_container_icon_color = 0x7f06021b; -->
+    <!-- Candidate column expand icon color -->
+    <!-- 候选栏展开图标颜色 -->
+    <!-- Menu interface page indicator -->
+    <!-- 菜单界面页码指示器 -->
+    <!-- Clipboard subitem font color -->
+    <!-- 剪切板子项目字体颜色 -->
+    <color name="ga">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_04 = 0x7f06022b; -->
+    <!-- Candidate column expand icon color -->
+    <!-- 候选栏展开图标颜色 -->
+    <color name="gq">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_00_Alpha_03 = 0x7f060224; -->
+    <!-- Translation container tab bar background color -->
+    <!-- 翻译容器 Tab 栏背景颜色 -->
+    <!-- <color name="gj">@android:color/system_secondary_container_light</color> -->
+
+    <!-- ime_skin_color_08 = 0x7f06022f; -->
+    <!-- Translation container prompt word font color -->
+    <!-- 翻译容器提示词字体颜色 -->
+    <!-- 自定义短语容器提示词字体颜色 -->
     <color name="gu">@android:color/system_on_surface_light</color>
-    <color name="i4">#00000000</color>
+    
+    <!-- ime_key_text_color 这个是自定义短语写入词字体
+    ime_color_00_Alpha_03 自定义短语容器 tab 栏背景色 -->
+    
+    <!-- ime_skin_candidate_type_container_bg_color_fixed = 0x7f06021e; -->
+    <!-- Clipboard and common phrase interface Tab bar background color -->
+    <!-- 剪切板与常用语界面 Tab 栏背景颜色 -->
+    <color name="gd">@android:color/transparent</color>
+
+    <!-- ime_skin_S5_type_selected_color = 0x7f0601f2; -->
+    <!-- Symbols and emoticons interface Tab bar background color -->
+    <!-- 符号与表情界面 Tab 栏背景颜色 -->
+    <color name="f7">@android:color/system_secondary_container_light</color>
+
+    <!-- ime_skin_color_16 = 0x7f060243; -->
+    <!-- Toolbar icon background color -->
+    <!-- 工具栏图标背景颜色 -->
+    <!-- Background color of tab selector selected state in clipboard and common phrase interface -->
+    <!-- 剪切板与常用语界面Tab选择器选中状态背景颜色 -->
+    <!-- Translation container background color -->
+    <!-- 翻译容器背景颜色 -->
+    <!-- Teleport card background color -->
+    <!-- 隔空传送卡片背景颜色 -->
+    <color name="hd">@android:color/system_surface_container_lowest_light</color>
+
+    <!-- ime_skin_color_05 = 0x7f06022c; -->
+    <!-- Toolbar icon color -->
+    <!-- 工具栏图标颜色 -->
+    <!-- Symbols and emoticon interface Tab unselected status icon color -->
+    <!-- 符号和表情界面Tab未选中状态图标颜色 -->
+    <color name="gr">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_S5_img_type_icon_color_selected = 0x7f0601ee; -->
+    <!-- Symbol and emoticon interface Tab selected status icon color -->
+    <!-- 符号和表情界面Tab选中状态图标颜色 -->
+    <color name="f3">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_12 = 0x7f06023b; -->
+    <!-- letter keys -->
+    <!-- 字母键 -->
+    <!-- first candidate word -->
+    <!-- 首个候选词 -->
+    <!-- Bubble background color -->
+    <!-- 气泡背景颜色 -->
+    <color name="h6">@android:color/system_surface_container_lowest_light</color>
+
+    <!-- ime_skin_color_btn_white_bg = 0x7f060257; -->
+    <!-- letter keys -->
+    <!-- 字母键 -->
+    <color name="hx">@android:color/system_surface_container_lowest_light</color>
+
+    <!-- ime_skin_color_btn_white_text = 0x7f06025b; -->
+    <!-- Letter key letter font color -->
+    <!-- 字母键字母字体颜色 -->
+    <!-- Bubble font color -->
+    <!-- 气泡字体颜色 -->
+    <!-- Non-first candidate word font color -->
+    <!-- 非首个候选词字体颜色 -->
+    <!-- Word selection interface font color -->
+    <!-- 选词界面字体颜色 -->
+    <color name="i1">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_07 = 0x7f06022e; -->
+    <!-- Character color on letter keys -->
+    <!-- 字母键上的字符颜色 -->
+    <color name="gt">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_19 = 0x7f060246; -->
+    <!-- First candidate word font color -->
+    <!-- 首个候选词字体颜色 -->
+    <color name="hg">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_13 = 0x7f06023c; -->
+    <!-- Function key background color -->
+    <!-- 功能键背景颜色 -->
+    <color name="h7">@android:color/system_secondary_container_light</color>
+
+    <!-- ime_skin_color_btn_green_bg = 0x7f06024a; -->
+    <!-- Special function key background color -->
+    <!-- 特殊功能键背景颜色 -->
+    <color name="hk">@android:color/system_secondary_container_light</color>
+
+    <!-- ime_skin_color_14 = 0x7f06023f; -->
+    <!-- Font color of selected state in word segmentation interface -->
+    <!-- 分词界面选中状态字体颜色 -->
+    <!-- Special function key background color -->
+    <!-- 特殊功能键背景颜色 -->
+    <color name="h_">@android:color/system_secondary_container_light</color>
+
+    <!-- ime_skin_color_14_Alpha_20 = 0x7f060240; -->
+    <!-- Background color of selected state in word segmentation interface -->
+    <!-- 分词界面选中状态背景颜色 -->
+    <color name="ha">@android:color/system_secondary_light</color>
+
+    <!-- ime_skin_color_17 = 0x7f060244; -->
+    <!-- Swipe up to delete the selected state background color of the bubble -->
+    <!-- 上滑删除气泡选中状态背景颜色 -->
+    <color name="he">@android:color/system_secondary_container_light</color>
+
+    <!-- ime_skin_color_02 = 0x7f060229; -->
+    <!-- Top bar font color -->
+    <!-- 顶栏字体颜色 -->
+    <color name="go">@android:color/system_on_surface_light</color>
+
+    <!-- ime_skin_color_10 = 0x7f060231; -->
+    <!-- Symbol and emoticon interface Tab bar background color -->
+    <!-- 符号与表情界面Tab栏背景颜色 -->
+    <!-- Function key stroke color -->
+    <!-- 功能键描边颜色 -->
+    <!-- Clipboard and common phrases interface Tab bar background color -->
+    <!-- 剪切板与常用语界面Tab栏背景颜色 -->
+    <!-- Clipboard subitem background color -->
+    <!-- 剪切板子项目背景颜色 -->
+    <!-- The background color is not selected in the word segmentation interface. -->
+    <!-- 分词界面未选中背景颜色 -->
+    <!-- Tab bar background color in word selection interface -->
+    <!-- 选词界面Tab栏背景颜色 -->
+    <color name="gw">@android:color/system_surface_container_low_light</color>
+
+    <!-- ime_skin_color_00_Alpha_15 = 0x7f060225; -->
+    <!-- Letter key bottom shadow -->
+    <!-- 字母键底部阴影 -->
+    <color name="gk">@android:color/transparent</color>
+
+    <!-- public static final int ime_skin_color_00_Alpha_25 = 0x7f060226; -->
+    <!-- Bottom stroke of function keys -->
+    <!-- 功能键底部描边 -->
+    <color name="gl">@android:color/transparent</color>
+
+    <!-- ime_skin_color_divider = 0x7f06025e; -->
+    <!-- Divider line in word selection interface -->
+    <!-- 选词界面分隔线 -->
+    <color name="i4">@android:color/transparent</color>
+
+    <!-- ime_skin_alternative_keyboard_bg_color = 0x7f0601fe; -->
+    <!-- Word selection interface sidebar background color -->
+    <!-- 选词界面侧栏背景颜色 -->
+    <color name="fi">@android:color/system_surface_container_light</color>
+
+    <!-- public static final int ime_candidate_syllable_select_bg_color_light = 0x7f060174; -->
+    <!-- First candidate word error correction font color -->
+    <!-- 首个候选词纠错字体颜色 -->
+    <color name="dt">@android:color/system_primary_light</color>
+
+    <!-- ime_skin_color_09 = 0x7f060230; -->
+    <!-- Nine-key number sidebar divider -->
+    <!-- 九键数字侧栏分隔线 -->
+    <!-- Divider line in word selection interface -->
+    <!-- 选词界面分隔线 -->
+    <!-- letter key stroke -->
+    <!-- 字母键描边 -->
+    <color name="gv">@android:color/transparent</color>
+    
+    <!-- ime_skin_color_15 = 0x7f060242; -->
+    <!-- 隔空传送背景颜色 -->
+    <color name="hc">@android:color/system_surface_container_light</color>
+    
+    <!-- ime_skin_BW_97 = 0x7f0601db; -->
+    <!-- 隔空传送弹窗背景色 -->
+    <color name="ek">@android:color/system_surface_container_light</color>
+    
+    <!-- ime_skin_toolbar_select_bg_color = 0x7f060397; -->
+    <!-- 皮肤工具栏选择背景颜色 -->
+    <color name="qk">@android:color/transparent</color>
+    
+
+
+    <!-- Dark color -->
+    <!-- ime_skin_dark_candidate_start_color = 0x7f0602af; -->
+    <!-- The upper part of the background color -->
+    <!-- 背景色上部分 -->
+    <!-- Bubble background color, special function key font color -->
+    <!-- 气泡背景颜色、特殊功能键字体颜色 -->
+    <color name="ka">@android:color/system_surface_container_dark</color>
+
+    <!-- ime_skin_dark_candidate_end_color = 0x7f0602ab; -->
+    <!-- Background color middle part -->
+    <!-- 背景色中间部分 -->
     <color name="k7">@android:color/system_surface_container_dark</color>
+
+    <!-- ime_skin_dark_keyboard_end_color = 0x7f060328; -->
+    <!-- The lower part of the background color -->
+    <!-- 背景色下部分 -->
     <color name="nk">@android:color/system_surface_container_dark</color>
+
+    <!-- ime_skin_dark_keyboard_background = 0x7f060326; -->
+    <!-- Floating window background color -->
+    <!-- 悬浮窗背景色 -->
     <color name="ni">@android:color/system_surface_container_dark</color>
+
+    <!-- ime_skin_dark_black = 0x7f060296; -->
+    <!-- Menu page icon color -->
+    <!-- 菜单页面图标颜色 -->
     <color name="jm">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_06 = 0x7f0602c0; -->
+    <!-- Menu page text color -->
+    <!-- 菜单页面文字颜色 -->
+    <!-- Commonly used phrases "Enter the first 3 characters..." Font color -->
+    <!-- 常用语 “输入前3个字……” 字体颜色 -->
+    <!-- Translation container Tab bar font color -->
+    <!-- 翻译容器Tab栏字体颜色 -->
+    <!-- Font color at the top of the emoticon interface -->
+    <!-- 表情界面顶部字体颜色 -->
     <color name="kr">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_18 = 0x7f0602d5; -->
+    <!-- Word segmentation interface container background color -->
+    <!-- 分词界面容器背景颜色 -->
+    <!-- Menu page icon background color -->
+    <!-- 菜单页面图标背景颜色 -->
     <color name="lb">@android:color/system_surface_container_highest_dark</color>
+
+    <!-- ime_skin_dark_clipboard_item_bg_color = 0x7f0602b4; -->
+    <!-- Clipboard item background color -->
+    <!-- 剪切板项目背景色 -->
     <color name="kf">@android:color/system_surface_container_highest_dark</color>
+
+    <!-- ime_skin_dark_candidate_right_container_icon_color = 0x7f0602ae; -->
+    <!-- Candidate column expand icon color -->
+    <!-- 候选栏展开图标颜色 -->
+    <!-- Menu interface page indicator -->
+    <!-- 菜单界面页码指示器 -->
+    <!-- Clipboard subitem font color -->
+    <!-- 剪切板子项目字体颜色 -->
     <color name="k_">@android:color/system_on_surface_dark</color>
-    <color name="kc">#00000000</color>
+
+    <!-- ime_skin_dark_color_04 = 0x7f0602be; -->
+    <!-- Candidate column expand icon color -->
+    <!-- 候选栏展开图标颜色 -->
+    <color name="kp">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_00_Alpha_03 = 0x7f0602b7; -->
+    <!-- Translation container tab bar background color -->
+    <!-- 翻译容器Tab栏背景颜色 -->
+    <!-- <color name="ki">@android:color/system_secondary_container_dark</color> -->
+
+    <!-- ime_skin_dark_color_08 = 0x7f0602c2; -->
+    <!-- Translation container prompt word font color -->
+    <!-- 翻译容器提示词字体颜色 -->
+    <color name="kt">@android:color/system_on_surface_dark</color>
+    
+    <!-- ime_skin_dark_candidate_type_container_bg_color_fixed = 0x7f0602b1; -->
+    <!-- Clipboard and common phrase interface Tab bar background color -->
+    <!-- 剪切板与常用语界面Tab栏背景颜色 -->
+    <color name="kc">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_S5_type_selected_color = 0x7f060283; -->
+    <!-- Symbols and emoticons interface Tab bar background color -->
+    <!-- 符号与表情界面Tab栏背景颜色 -->
     <color name="j4">@android:color/system_secondary_container_dark</color>
+
+    <!-- ime_skin_dark_color_16 = 0x7f0602d3; -->
+    <!-- Toolbar icon background color -->
+    <!-- 工具栏图标背景颜色 -->
+    <!-- Background color of tab selector selected state in clipboard and common phrase interface -->
+    <!-- 剪切板与常用语界面Tab选择器选中状态背景颜色 -->
+    <!-- Translation container background color -->
+    <!-- 翻译容器背景颜色 -->
+    <color name="l_">@android:color/system_surface_container_highest_dark</color>
+
+    <!-- ime_skin_dark_color_05 = 0x7f0602bf; -->
+    <!-- Toolbar icon color -->
+    <!-- 工具栏图标颜色 -->
+    <!-- Symbols and emoticon interface Tab unselected status icon color -->
+    <!-- 符号和表情界面Tab未选中状态图标颜色 -->
+    <color name="kq">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_S5_img_type_icon_color_selected = 0x7f06027f; -->
+    <!-- Symbol and emoticon interface Tab selected status icon color -->
+    <!-- 符号和表情界面Tab选中状态图标颜色 -->
     <color name="j0">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_12 = 0x7f0602cb; -->
+    <!-- letter keys -->
+    <!-- 字母键 -->
+    <!-- first candidate word -->
+    <!-- 首个候选词 -->
+    <!-- Bubble background color -->
+    <!-- 气泡背景颜色 -->
     <color name="l2">@android:color/system_surface_container_highest_dark</color>
+
+    <!-- ime_skin_dark_color_btn_white_bg = 0x7f0602e7; -->
+    <!-- letter keys -->
+    <!-- 字母键 -->
     <color name="lt">@android:color/system_surface_container_highest_dark</color>
+
+    <!-- ime_skin_dark_color_btn_white_text = 0x7f0602eb; -->
+    <!-- Letter key letter font color -->
+    <!-- 字母键字母字体颜色 -->
+    <!-- Bubble font color -->
+    <!-- 气泡字体颜色 -->
+    <!-- Non-first candidate word font color -->
+    <!-- 非首个候选词字体颜色 -->
+    <!-- Word selection interface font color -->
+    <!-- 选词界面字体颜色 -->
     <color name="lx">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_07 = 0x7f0602c1; -->
+    <!-- Character color on letter keys -->
+    <!-- 字母键上的字符颜色 -->
+    <color name="ks">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_19 = 0x7f0602d6; -->
+    <!-- First candidate word font color -->
+    <!-- 首个候选词字体颜色 -->
     <color name="lc">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_13 = 0x7f0602cc; -->
+    <!-- Function key background color -->
+    <!-- 功能键背景颜色 -->
     <color name="l3">@android:color/system_secondary_container_dark</color>
+
+    <!-- ime_skin_dark_color_btn_green_bg = 0x7f0602da; -->
+    <!-- Special function key background color -->
+    <!-- 特殊功能键背景颜色 -->
     <color name="lg">@android:color/system_secondary_container_dark</color>
+
+    <!-- ime_skin_dark_color_14 = 0x7f0602cf; -->
+    <!-- Font color of selected state in word segmentation interface -->
+    <!-- 分词界面选中状态字体颜色 -->
+    <!-- Special function key background color -->
+    <!-- 特殊功能键背景颜色 -->
     <color name="l6">@android:color/system_secondary_container_dark</color>
+
+    <!-- ime_skin_dark_color_14_Alpha_20 = 0x7f0602d0; -->
+    <!-- Background color of selected state in word segmentation interface -->
+    <!-- 分词界面选中状态背景颜色 -->
     <color name="l7">@android:color/system_secondary_dark</color>
+
+    <!-- ime_skin_dark_color_17 = 0x7f0602d4; -->
+    <!-- Swipe up to delete the selected state background color of the bubble -->
+    <!-- 上滑删除气泡选中状态背景颜色 -->
+    <color name="la">@android:color/system_secondary_container_dark</color>
+
+    <!-- ime_skin_dark_color_02 = 0x7f0602bc; -->
+    <!-- Top bar font color -->
+    <!-- 顶栏字体颜色 -->
+    <color name="kn">@android:color/system_on_surface_dark</color>
+
+    <!-- ime_skin_dark_color_10 = 0x7f0602c4; -->
+    <!-- Symbol and emoticon interface Tab bar background color -->
+    <!-- 符号与表情界面Tab栏背景颜色 -->
+    <!-- Function key stroke color -->
+    <!-- 功能键描边颜色 -->
+    <!-- Clipboard and common phrases interface Tab bar background color -->
+    <!-- 剪切板与常用语界面Tab栏背景颜色 -->
+    <!-- Clipboard subitem background color -->
+    <!-- 剪切板子项目背景颜色 -->
+    <!-- The background color is not selected in the word segmentation interface. -->
+    <!-- 分词界面未选中背景颜色 -->
+    <!-- Tab bar background color in word selection interface -->
+    <!-- 选词界面Tab栏背景颜色 -->
     <color name="kv">@android:color/system_surface_container_high_dark</color>
-    <color name="m0">#00000000</color>
+
+    <!-- UN_BW_0_Alpha_0_5 = 0x7f0600d2; -->
+    <!-- Bottom shadow of all keys -->
+    <!-- 全部按键底部阴影 -->
+    <color name="UN_BW_0_Alpha_0_5">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_color_divider = 0x7f0602ee; -->
+    <!-- Divider line in word selection interface -->
+    <!-- 选词界面分隔线 -->
+    <color name="m0">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_alternative_keyboard_bg_color = 0x7f060290; -->
+    <!-- Word selection interface sidebar background color -->
+    <!-- 选词界面侧栏背景颜色 -->
     <color name="jg">@android:color/system_surface_container_dark</color>
-    <color name="ku">#00000000</color>
-    <color name="pm">#00000000</color>
-    <color name="pd">#00000000</color>
-    <color name="p8">#00000000</color>
-    <color name="nc">#00000000</color>
-    <color name="n4">#00000000</color>
-    <color name="my">#00000000</color>
-    <color name="pp">#00000000</color>
-    <color name="pg">#00000000</color>
-    <color name="pa">#00000000</color>
-    <color name="nf">#00000000</color>
-    <color name="n7">#00000000</color>
-    <color name="n1">#00000000</color>
-    <color name="lw">#00000000</color>
-    <color name="lp">#00000000</color>
-    <color name="lj">#00000000</color>
-    <color name="UN_BW_0_Alpha_0_5">#00000000</color>
+
+    <!-- ime candidate syllable select bg color dark:I = 0x7f060173 -->
+    <!-- First candidate word error correction font color -->
+    <!-- 首个候选词纠错字体颜色 -->
+    <color name="ds">@android:color/system_primary_dark</color>
+
+    <!-- ime_skin_dark_color_09 = 0x7f0602c3; -->
+    <!-- Nine-key number sidebar divider -->
+    <!-- 九键数字侧栏分隔线 -->
+    <!-- Divider line in word selection interface -->
+    <!-- 选词界面分隔线 -->
+    <!-- letter key stroke -->
+    <!-- 字母键描边 -->
+    <color name="ku">@android:color/transparent</color>
+    
+    <!-- ime_skin_dark_color_15 = 0x7f0602d2; -->
+    <!-- 隔空传送背景颜色 -->
+    <color name="l9">@android:color/system_surface_container_dark</color>
+
+
+
+    <!-- border -->
+    <!-- ime_skin_key_white_border_color = 0x7f060374; -->
+    <color name="pm">@android:color/transparent</color>
+
+    <!-- ime_skin_key_grey_border_color = 0x7f06036b; -->
+    <color name="pd">@android:color/transparent</color>
+
+    <!-- ime_skin_key_green_border_color = 0x7f060365; -->
+    <color name="p8">@android:color/transparent</color>
+
+    <!-- ime_skin_color_btn_white_border = 0x7f060258; -->
+    <color name="hy">@android:color/transparent</color>
+
+    <!-- ime_skin_color_btn_grey_border = 0x7f060251; -->
+    <color name="hr">@android:color/transparent</color>
+
+    <!-- ime_skin_color_btn_green_border = 0x7f06024b; -->
+    <color name="hl">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_key_white_border_color = 0x7f060320; -->
+    <color name="nc">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_key_grey_border_color = 0x7f060317; -->
+    <color name="n4">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_key_green_border_color = 0x7f060311; -->
+    <color name="my">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_color_btn_white_border = 0x7f0602e8; -->
+    <color name="lu">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_color_btn_grey_border = 0x7f0602e1; -->
+    <color name="ln">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_color_btn_green_border = 0x7f0602db; -->
+    <color name="lh">@android:color/transparent</color>
+
+
+    <!-- shadow -->
+    <!-- ime_skin_key_white_shadow_color = 0x7f060377; -->
+    <color name="pp">@android:color/transparent</color>
+
+    <!-- ime_skin_key_grey_shadow_color = 0x7f06036e; -->
+    <color name="pg">@android:color/transparent</color>
+
+    <!-- ime_skin_key_green_shadow_color = 0x7f060368; -->
+    <color name="pa">@android:color/transparent</color>
+
+    <!-- ime_skin_color_btn_white_shadow = 0x7f06025a; -->
+    <color name="i0">@android:color/transparent</color>
+
+    <!-- ime_skin_color_btn_grey_shadow = 0x7f060253; -->
+    <color name="ht">@android:color/transparent</color>
+
+    <!-- ime_skin_color_btn_green_shadow = 0x7f06024d; -->
+    <color name="hn">@android:color/transparent</color>
+
+
+    <!-- ime_skin_dark_key_white_shadow_color = 0x7f060323; -->
+    <color name="nf">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_key_grey_shadow_color = 0x7f06031a; -->
+    <color name="n7">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_key_green_shadow_color = 0x7f060314; -->
+    <color name="n1">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_color_btn_white_shadow = 0x7f0602ea; -->
+    <color name="lw">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_color_btn_grey_shadow = 0x7f0602e3; -->
+    <color name="lp">@android:color/transparent</color>
+
+    <!-- ime_skin_dark_color_btn_green_shadow = 0x7f0602dd; -->
+    <color name="lj">@android:color/transparent</color>
+
 </resources>
