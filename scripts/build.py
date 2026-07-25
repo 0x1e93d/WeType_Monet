@@ -18,7 +18,7 @@ SRC_DIR = os.path.join(PROJECT_ROOT, "src")
 # 最终产物输出目录
 OUT_DIR = os.path.join(PROJECT_ROOT, "out")
 
-# 临时打包构建目录 (out/build_tmp)
+# 临时打包构建目录 (WeType_Gboard/out/build_tmp)
 BUILD_TMP_DIR = os.path.join(OUT_DIR, "build_tmp")
 
 # 模块模板目录：存放 META-INF、customize.sh 等模版文件
@@ -361,19 +361,13 @@ def create_module_zip(version_name):
     if os.path.exists(zip_path):
         os.remove(zip_path)
 
-    # 预压缩格式采用 ZIP_STORED，避免破坏已对齐的 APK 结构并提升打包效率
-    NO_COMPRESS_EXTS = ('.apk', '.zip', '.png', '.jpg', '.so')
-
-    with zipfile.ZipFile(zip_path, "w") as zf:
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for root, _, files in os.walk(BUILD_TMP_DIR):
             for file in files:
                 abs_file_path = os.path.join(root, file)
+                # 计算相对路径，使解压根目录即为模块根目录
                 rel_path = os.path.relpath(abs_file_path, BUILD_TMP_DIR)
-                
-                if file.lower().endswith(NO_COMPRESS_EXTS):
-                    zf.write(abs_file_path, rel_path, compress_type=zipfile.ZIP_STORED)
-                else:
-                    zf.write(abs_file_path, rel_path, compress_type=zipfile.ZIP_DEFLATED)
+                zf.write(abs_file_path, rel_path)
 
     print(f"[✓] 模块 ZIP 包制作完成：")
     print(f"    └─ 输出路径: {zip_path}")

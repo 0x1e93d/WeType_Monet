@@ -41,4 +41,4 @@ jobs:
         with:
           name: WetypeMonet-Module # 在 GitHub Actions 产物列表中显示的名称
           path: out/*.zip           # 打包上传 out 目录下所有的 .zip 模块文件
-          retention-days: 14        # 产物保存期限设置为 14 天（到期后自动清理）
+          retention-days: 7        # 产物保存期限设置为 7 天（到期后自动清理）
