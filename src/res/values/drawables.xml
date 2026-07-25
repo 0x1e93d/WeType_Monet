@@ -1,8 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <item type="drawable" name="icon_keys_voice_dark" format="string">res/drawable/icon_keys_voice_dark.xml</item>
-    <item type="drawable" name="icon_keys_voice" format="string">res/drawable/icon_keys_voice.xml</item>
-    <item type="drawable" name="icon_voice_sound" format="string">res/drawable/icon_voice_sound.xml</item>
-    <item type="drawable" name="j1" format="string">res/drawable/j1.xml</item>
-    <item type="drawable" name="j0" format="string">res/drawable/j0.xml</item>
-</resources>
