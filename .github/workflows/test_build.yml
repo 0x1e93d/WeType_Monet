@@ -1,53 +1,44 @@
-name: Test Build Script
+name: Manual Build Overlay Module # 工作流名称，会显示在 GitHub Actions 列表页
 
 on:
-  push:
-    branches:
-      - main
-      - master
-    paths:
-      - 'src/**'
-      - 'module_template/**'
-      - 'scripts/build.py'
-      - '.github/workflows/test_build.yml'
-  pull_request:
-    branches:
-      - main
-      - master
-  workflow_dispatch: # 支持在 Actions 页面手动点击触发运行
+  # 仅保留 workflow_dispatch：彻底关闭所有提交/PR自动触发，仅允许在 GitHub 网页手动点击运行
+  workflow_dispatch:
+
+permissions:
+  contents: write # 赋予 Actions 写入权限
 
 jobs:
-  test-build:
-    runs-on: ubuntu-latest
+  manual-build:
+    runs-on: ubuntu-latest # 使用最新的 Ubuntu 虚拟机环境
 
     steps:
-      # 1. 拉取仓库代码
+      # 1. 检出（拉取）仓库代码
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 完整拉取 commit 历史，以便读取正确的 git commit count 作为 versionCode
+          fetch-depth: 0 # 完整拉取所有 Commit 历史，确保脚本可通过 git rev-list 获取正确的提交数作为 versionCode
 
-      # 2. 配置 Python 环境
+      # 2. 配置 Python 运行环境
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x'
+          python-version: '3.x' # 使用 Python 3 最新版本
 
-      # 3. 配置 Java 环境 (apksigner / keytool 依赖 Java 环境)
+      # 3. 配置 Java 环境 (JDK 17)
       - name: Set up JDK 17
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin'
-          java-version: '17'
+          distribution: 'temurin' # 使用 Eclipse Temurin 发行版
+          java-version: '17'      # apksigner 和 keytool 依赖 JDK 17 环境
 
-      # 4. 执行构建脚本
+      # 4. 执行构建打包脚本
       - name: Run Build Script
-        run: python scripts/build.py
+        run: python scripts/build.py # 执行编译 Overlay APK、对齐签名并生成 Magisk 模块 ZIP 包
 
-      # 5. 上传测试构建产物 (Zip 包)
-      - name: Upload Test Build Artifact
+      # 5. 上传编译好的 ZIP 刷机包
+      - name: Upload Built Zip Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: WetypeMonet-Test-Build
-          path: out/*.zip
-          retention-days: 7 # 测试产物保留 7 天
+          name: WetypeMonet-Module # 在 GitHub Actions 产物列表中显示的名称
+          path: out/*.zip           # 打包上传 out 目录下所有的 .zip 模块文件
+          retention-days: 14        # 产物保存期限设置为 14 天（到期后自动清理）
