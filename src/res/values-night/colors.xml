@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="White">@android:color/system_on_surface_dark</color>
+    <color name="ime_key_back_icon_color">@android:color/system_on_surface_dark</color>
+</resources>
