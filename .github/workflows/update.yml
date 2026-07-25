@@ -1,0 +1,45 @@
+name: Auto Update WeInput Overlay
+
+on:
+  # 仅保留手动触发
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码仓库
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      # 2. 设置 Python 环境
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      # 3. 安装依赖
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install beautifulsoup4
+
+      # 4. 安装 Apktool
+      - name: Install Apktool
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y apktool
+
+      # 5. 运行自动化更新与构建脚本
+      - name: Run Update & Build Script
+        run: |
+          python scripts/update_overlay.py
+
+      # 5. 上传编译好的 ZIP 刷机包
+      - name: Upload Built Zip Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: WetypeMonet-Module # 在 GitHub Actions 产物列表中显示的名称
+          path: out/*.zip           # 打包上传 out 目录下所有的 .zip 模块文件
+          retention-days: 7        # 产物保存期限设置为 7 天（到期后自动清理）
