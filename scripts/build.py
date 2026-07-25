@@ -158,17 +158,17 @@ def generate_module_prop(output_dir):
 
 
 def build_overlay_apk():
-    """使用 aapt2 编译资源并生成 Overlay APK 到 out/build_tmp/system/product/overlay/"""
+    """使用 aapt2 编译资源并生成 WetypeMonet.apk 到 out/build_tmp/files/ 目录下"""
     aapt2_exe, android_jar = find_aapt2_and_jar()
     print(f"[i] AAPT2 路径: {aapt2_exe}")
     print(f"[i] ANDROID_JAR 路径: {android_jar}")
 
-    # 设置为 Magisk / KernelSU 模块要求的层级结构
-    target_apk_dir = os.path.join(BUILD_TMP_DIR, "system", "product", "overlay")
+    # 目标输出位置设为 out/build_tmp/files/
+    target_apk_dir = os.path.join(BUILD_TMP_DIR, "files")
     os.makedirs(target_apk_dir, exist_ok=True)
     
     compiled_zip = os.path.join(OUT_DIR, "compiled.zip")
-    unsigned_apk = os.path.join(target_apk_dir, "wetype_monet_overlay.apk")
+    unsigned_apk = os.path.join(target_apk_dir, "WetypeMonet.apk")
     
     res_dir = os.path.join(SRC_DIR, "res")
     manifest_xml = os.path.join(SRC_DIR, "AndroidManifest.xml")
@@ -206,12 +206,12 @@ def build_overlay_apk():
 if __name__ == "__main__":
     try:
         print("=== 开始执行构建流程 ===")
-        # 1. 生成 module.prop
+        # 1. 生成 module.prop 到 out/build_tmp/
         generate_module_prop(BUILD_TMP_DIR)
         
-        # 2. 编译并输出 Overlay APK
+        # 2. 编译资源并生成 WetypeMonet.apk 到 out/build_tmp/files/
         build_overlay_apk()
         
-        print("\n[✓] 所有构建步骤已顺利完成！中间产物位于 out/build_tmp\n")
+        print("\n[✓] 所有构建步骤已顺利完成！构建文件置于 out/build_tmp\n")
     except Exception as e:
         print(f"\n[!] 构建失败: {e}")
