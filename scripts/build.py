@@ -1,6 +1,7 @@
 import os
 import shutil
 import subprocess
+import zipfile
 from datetime import datetime
 
 # ==================== 第一步：路径配置 ====================
@@ -191,8 +192,26 @@ def find_sdk_tools():
 
 # ==================== 第五步：核心逻辑函数 ====================
 
+def copy_module_template(output_dir):
+    """准备构建目录：复制 module_template 中的所有模版文件到临时构建目录"""
+    # 清理上一次的构建临时目录
+    if os.path.exists(output_dir):
+        shutil.rmtree(output_dir)
+    os.makedirs(output_dir, exist_ok=True)
+
+    if os.path.exists(TEMPLATE_DIR):
+        print("[i] 正在复制模块模板文件...")
+        for item in os.listdir(TEMPLATE_DIR):
+            s = os.path.join(TEMPLATE_DIR, item)
+            d = os.path.join(output_dir, item)
+            if os.path.isdir(s):
+                shutil.copytree(s, d, dirs_exist_ok=True)
+            else:
+                shutil.copy2(s, d)
+
+
 def generate_module_prop(output_dir):
-    """生成 module.prop 文件到目标构建目录"""
+    """生成 module.prop 文件到目标构建目录（覆盖模版中的同名文件）"""
     os.makedirs(output_dir, exist_ok=True)
     target_file_path = os.path.join(output_dir, "module.prop")
     
@@ -231,6 +250,7 @@ def generate_module_prop(output_dir):
     print(f"    ├─ 目标路径: {target_file_path}")
     print(f"    ├─ 版本名称: {version_name}")
     print(f"    └─ 版本代码: {version_code}")
+    return version_name
 
 
 def build_overlay_apk():
@@ -330,17 +350,47 @@ def build_overlay_apk():
     print(f"[✓] Overlay APK 编译并成功完成 V2 签名: {final_apk}")
 
 
+def create_module_zip(version_name):
+    """将 BUILD_TMP_DIR 内的所有内容打包为标准的 Magisk/KernelSU 模块 ZIP 刷机包"""
+    print("\n[i] 正在打包模块 Zip 文件...")
+    os.makedirs(OUT_DIR, exist_ok=True)
+    
+    zip_filename = f"{MODULE_ID}_{version_name}.zip"
+    zip_path = os.path.join(OUT_DIR, zip_filename)
+
+    if os.path.exists(zip_path):
+        os.remove(zip_path)
+
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for root, _, files in os.walk(BUILD_TMP_DIR):
+            for file in files:
+                abs_file_path = os.path.join(root, file)
+                # 计算相对路径，使解压根目录即为模块根目录
+                rel_path = os.path.relpath(abs_file_path, BUILD_TMP_DIR)
+                zf.write(abs_file_path, rel_path)
+
+    print(f"[✓] 模块 ZIP 包制作完成：")
+    print(f"    └─ 输出路径: {zip_path}")
+
+
 # ==================== 执行入口 ====================
 
 if __name__ == "__main__":
     try:
         print("=== 开始执行构建流程 ===")
-        # 1. 生成 module.prop 到 out/build_tmp/
-        generate_module_prop(BUILD_TMP_DIR)
         
-        # 2. 编译资源并签名生成 WetypeMonet.apk 到 out/build_tmp/files/
+        # 1. 初始化 build_tmp 并复制 module_template 框架文件
+        copy_module_template(BUILD_TMP_DIR)
+        
+        # 2. 生成 module.prop 到 out/build_tmp/
+        version_name = generate_module_prop(BUILD_TMP_DIR)
+        
+        # 3. 编译资源并签名生成 WetypeMonet.apk 到 out/build_tmp/files/
         build_overlay_apk()
         
-        print("\n[✓] 所有构建步骤已顺利完成！构建文件置于 out/build_tmp\n")
+        # 4. 将 out/build_tmp 整体打包为 ZIP 刷机包
+        create_module_zip(version_name)
+        
+        print("\n[✓] 所有构建与打包步骤已顺利完成！\n")
     except Exception as e:
         print(f"\n[!] 构建失败: {e}")
