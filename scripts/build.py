@@ -328,40 +328,73 @@ def parse_smali_color_mappings() -> dict[str, str]:
 def generate_version_config(
     sha256_str: str, apk_code: str, apk_name: str, release_date: str, changelog: list[str]
 ) -> Path:
-    """根据 base_colors.json 模板生成当前版本的 JSON 映射配置"""
     if not BASE_COLORS_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础颜色模板: {BASE_COLORS_PATH}")
 
-    # 1. 提取 Smali 混淆映射 (0x7f060001 -> "a_a_a") 与 public.xml 定义 (0x7f060001 -> "a_a_a" 或 "White")
-    id_to_obfuscated = parse_smali_color_mappings()
-    id_to_unobfuscated = parse_public_xml_color_mappings()
+    # 1. 提取 public.xml: ID (0x7f060001) -> 混淆后的 Resource Name (a_a_a)
+    id_to_obfuscated_name = parse_public_xml_color_mappings()
 
-    # 2. 构建 Resource ID 的反向索引表
-    unobf_name_to_id = {v: k for k, v in id_to_unobfuscated.items()}
+    # 2. 提取 Smali: Key 字段名 ("White") -> ID (0x7f060001)
+    # 建立反向表：从 Smali 中的 Field 名字找 ID
+    key_to_id = {}
+    
+    field_pattern = re.compile(
+        r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE
+    )
+    const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
+    sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
 
+    smali_dirs = list(DECOMPILE_DIR.glob("smali*"))
+    for smali_dir in smali_dirs:
+        for smali_file in smali_dir.rglob("*.smali"):
+            if not smali_file.is_file():
+                continue
+            with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
+                content = f.read()
+                
+                # 模式 1: 直接内联声明 .field public static final White:I = 0x7f060001
+                for match in field_pattern.finditer(content):
+                    field_name, res_id = match.group(1), match.group(2).lower()
+                    key_to_id[field_name] = res_id
+
+                # 模式 2: <clinit> 赋指
+                lines = content.splitlines()
+                last_const_id = None
+                for line in lines:
+                    c_match = const_pattern.search(line)
+                    if c_match:
+                        last_const_id = c_match.group(1).lower()
+                        continue
+                    s_match = sput_pattern.search(line)
+                    if s_match and last_const_id:
+                        field_name = s_match.group(1)
+                        key_to_id[field_name] = last_const_id
+                        last_const_id = None
+
+    print(f"[+] Smali 反查表建立完成，共抓取 {len(key_to_id)} 组 Key -> ID 映射")
+
+    # 3. 读取 base_colors.json
     with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
         base_colors = json.load(f).get("theme_colors", [])
 
     updated_colors = []
 
+    # 4. 遍历 base_colors，通过 Smali 得到的 ID 反查 public.xml 中的混淆 name
     for item in base_colors:
-        # 获取原始未混淆 Key（兼容 "unobfuscated_key" 或 "key" 字段）
         raw_key = item.get("unobfuscated_key") or item.get("key") or ""
         if not raw_key:
             continue
 
-        # 尝试通过 public.xml 反查 Resource ID
-        res_id = unobf_name_to_id.get(raw_key)
-        
-        obf_key = ""
-        if res_id:
-            # 若 public.xml 中找到了该 ID，则去 Smali 查混淆名
-            obf_key = id_to_obfuscated.get(res_id, "")
+        # 步骤 A: 从 Smali 中根据 raw_key 找到对应的 Resource ID
+        res_id = key_to_id.get(raw_key)
 
-        # 核心修复点：
-        # 如果从 Smali/public 中没有查到混淆字段名（比如 public.xml 名字没对上），
-        # 则直接把原始 raw_key 作为匹配结果，绝不清空！
-        final_obf_key = obf_key if obf_key else raw_key
+        obf_name = ""
+        if res_id:
+            # 步骤 B: 拿着 ID 去 public.xml 映射表反查混淆后的 Resource Name
+            obf_name = id_to_obfuscated_name.get(res_id, "")
+
+        # 如果 Smali/public.xml 均没查到混淆名字，回退原始 key
+        final_obf_key = obf_name if obf_name else raw_key
 
         updated_colors.append({
             "unobfuscated_key": raw_key,
@@ -371,6 +404,7 @@ def generate_version_config(
             "description": item.get("description", "")
         })
 
+    # 5. 生成版本 JSON 配置文件
     safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_code)
     filename = f"{safe_name}({safe_code}).json" if safe_code else f"{safe_name}.json"
@@ -384,19 +418,14 @@ def generate_version_config(
         "theme_colors": updated_colors
     }
 
-    json_payload = {
-        k: v for k, v in raw_payload.items()
-        if v not in (None, "", [])
-    }
-
     config_path = CONFIG_DIR / filename
     out_path = OUT_DIR / filename
 
     with open(config_path, "w", encoding="utf-8") as f:
-        json.dump(json_payload, f, ensure_ascii=False, indent=4)
+        json.dump({k: v for k, v in raw_payload.items() if v not in (None, "", [])}, f, ensure_ascii=False, indent=4)
     shutil.copy2(config_path, out_path)
 
-    print(f"[+] 配置生成完毕，共写入 {len(updated_colors)} 个 Key 节点")
+    print(f"[+] 版本 JSON 配置文件生成完毕: {config_path}")
     return config_path
 
 # ==============================================================================
