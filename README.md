@@ -23,8 +23,4 @@ GitHub Actions 每天北京时间 06:00 检查微信输入法更新，也会在�
 
 ## 推荐搭配
 
-- [WeType-Swipe](https://github.com/waoui/WeType-Swipe)：LSPosed 模块，为微信输入法的 26 键和九宫格提供可配置的按键下滑快捷操作，例如全选、剪切、复制和粘贴。它与本项目的视觉 Overlay 职责不同，可以搭配使用；需在 LSPosed 中启用并将作用域设为微信输入法。
-
-## 贡献
-
-提交前请运行测试。更新 Drawable 时，同时更新 `config/base.json`；测试会校验配置清单、文件路径和资源说明是否完整。
+- [WeType-Swipe](https://github.com/waoui/WeType-Swipe)：LSPosed 模块，为微信输入法的 26 键和九宫格提供可配置的按键下滑快捷操作，例如全选、剪切、复制和粘贴。
