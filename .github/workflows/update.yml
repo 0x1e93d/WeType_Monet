@@ -36,11 +36,11 @@ jobs:
           sudo apt-get install -y apktool zip
           pip install beautifulsoup4
 
-      - name: 运行 update.py 自动检测更新与构建
+      - name: 运行 update_overlay.py 自动检测更新与构建
         id: run_update
         run: |
-          # 执行 update.py，内部会自动解析、生成 config/3.5.2（105020）.json 并触发 build.py
-          python3 scripts/update.py
+          # 执行 update_overlay.py，内部会自动解析、生成 config/3.5.2（105020）.json 并触发 build.py
+          python3 scripts/update_overlay.py
           
           # 查找 config/ 下最新生成的 JSON 文件 (排除 base_colors.json)
           LATEST_JSON=$(ls -t config/*.json 2>/dev/null | grep -v "base_colors.json" | head -n 1 || true)
