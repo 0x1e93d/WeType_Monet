@@ -388,12 +388,44 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
     if not BASE_CONFIG_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础配置文件: {BASE_CONFIG_PATH}")
 
-    print("[*] 正在扫描 Smali 映射表...")
-    key_to_id = parse_smali_mappings()
-    print(f"  └─ Smali 符号表中发现 {len(key_to_id)} 组 Key -> ID 映射")
+    print("[*] 正在解析 R$*.smali 资源表...")
+    r_mappings = parse_r_class_mappings()
+    
+    # === [新增：排查日志] 打印每个类型提取到的样本 ===
+    print(f"\n--- [DEBUG] Smali 提取结果抽样排查 ---")
+    for res_type, mapping in r_mappings.items():
+        print(f"▶ [{res_type.upper()}] 共提取到 {len(mapping)} 条。前 10 条样本:")
+        sample_keys = list(mapping.keys())[:10]
+        if sample_keys:
+            for k in sample_keys:
+                print(f"   ├─ Key: '{k}' -> ID: {mapping[k]}")
+        else:
+            print("   └─ (无数据)")
+    print("---------------------------------------\n")
 
     with open(BASE_CONFIG_PATH, "r", encoding="utf-8") as f:
         base_config = json.load(f)
+
+    # === [新增：排查日志] 拿 base.json 的 Key 去对比 ===
+    print("--- [DEBUG] base.json Key 对比诊断 ---")
+    sample_base_colors = [item.get("key") or item.get("unobfuscated_key") for item in base_config.get("theme_colors", [])[:5]]
+    print(f"▶ base.json 中前 5 个 color key: {sample_base_colors}")
+    
+    color_r_map = r_mappings.get("color", {})
+    id_to_color_name = parse_public_xml_mappings("color")
+    
+    for base_key in sample_base_colors:
+        in_r = base_key in color_r_map
+        res_id = color_r_map.get(base_key)
+        in_public = base_key in id_to_color_name.values()
+        print(f"   ├─ Key '{base_key}': 在 R$color 中? {in_r} (ID: {res_id}) | 在 public.xml 中? {in_public}")
+    print("---------------------------------------\n")
+
+    updated_colors = process_theme_colors(base_config.get("theme_colors", []), r_mappings)
+    updated_strings = process_theme_strings(base_config.get("theme_strings", []), r_mappings)
+    updated_drawables = process_theme_drawables(base_config.get("theme_drawables", []), r_mappings)
+
+    # 后续代码保持不变...
 
     updated_colors = process_theme_colors(base_config.get("theme_colors", []), key_to_id)
     updated_strings = process_theme_strings(base_config.get("theme_strings", []), key_to_id)
