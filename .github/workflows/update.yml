@@ -36,7 +36,7 @@ jobs:
         id: run_update
         run: |
           # 运行升级脚本，该脚本内部会在更新时自动调用 build.py
-          python3 scripts/update.py
+          python3 scripts/update_overlay.py
           
           # 查找 config/ 下除了 base_colors.json 外最新生成的 JSON 文件
           LATEST_JSON=$(ls -t config/*.json 2>/dev/null | grep -v "base_colors.json" | head -n 1 || true)
