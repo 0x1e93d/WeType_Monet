@@ -95,21 +95,36 @@ def find_linux_sdk_tools() -> tuple[Path, Path, Path, Path]:
     zipalign = locate_tool("ZIPALIGN_PATH", "zipalign")
     apksigner = locate_tool("APKSIGNER_PATH", "apksigner")
 
-    # 定位 android.jar
+    # 定位 android.jar，防踩坑：过滤掉预览版或大于 35 的不兼容 platform 目录
     android_jar = None
     if (jar_env := os.environ.get("ANDROID_JAR_PATH")) and Path(jar_env).exists():
         android_jar = Path(jar_env)
     elif sdk_path.exists() and (sdk_path / "platforms").exists():
-        platforms = sorted((sdk_path / "platforms").iterdir(), reverse=True)
-        for p in platforms:
-            cand = p / "android.jar"
-            if cand.exists():
-                android_jar = cand
-                break
+        # 筛选合法且稳定的 android-XX 平台，优先选 35/34 等稳定版 API
+        candidate_platforms = []
+        for p in (sdk_path / "platforms").iterdir():
+            if p.is_dir() and (p / "android.jar").exists():
+                match = re.search(r'android-(\d+)', p.name)
+                if match:
+                    api_level = int(match.group(1))
+                    # 限制最高 API 级别为 35，避开不兼容的 36+ 或小数点预览版
+                    if api_level <= 35:
+                        candidate_platforms.append((api_level, p / "android.jar"))
+        
+        if candidate_platforms:
+            # 排序后取最高且稳定的版本 (比如 android-35)
+            candidate_platforms.sort(key=lambda x: x[0], reverse=True)
+            android_jar = candidate_platforms[0][1]
 
     if not android_jar:
-        raise RuntimeError("[!] 未能定位 android.jar，请设置 ANDROID_JAR_PATH 环境变量。")
+        # 兜底保底方案
+        fallback = sdk_path / "platforms" / "android-35" / "android.jar"
+        if fallback.exists():
+            android_jar = fallback
+        else:
+            raise RuntimeError("[!] 未能定位兼容的 android.jar，请指定 ANDROID_JAR_PATH 环境变量。")
 
+    print(f"[+] 选中编译依赖基础库: {android_jar}")
     return aapt2, zipalign, apksigner, android_jar
 
 def ensure_debug_keystore() -> Path:
