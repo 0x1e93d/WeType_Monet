@@ -3,7 +3,7 @@
 
 """
 微信输入法 Monet Overlay 自动化适配与构建工作流 (GitHub Actions Linux 专用)
-支持 theme_colors 与 theme_drawables 统一适配映射
+支持 theme_colors, theme_drawables 与 theme_strings 统一适配映射
 """
 
 import hashlib
@@ -47,11 +47,10 @@ MODULE_NAME = "微信输入法 Monet"
 MODULE_AUTHOR = "酷安@1e93d"
 MODULE_DESCRIPTION = "为微信输入法提供 Monet 动态色彩主题与资源定制。"
 BASE_VERSION = "v1.0.0"
-UPDATE_JSON_URL = ""
 
 
 # ==============================================================================
-# 2. 通用底层辅助函数 (消除冗余代码)
+# 2. 通用底层辅助函数
 # ==============================================================================
 
 def get_git_info() -> tuple[str, str]:
@@ -227,11 +226,11 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
 
 
 # ==============================================================================
-# 4. 阶段二：解析公共映射 (公共化公共函数，支持 color / drawable)
+# 4. 阶段二：解析公共映射 (支持 color / drawable / string)
 # ==============================================================================
 
 def parse_public_xml_mappings(res_type: str) -> dict[str, str]:
-    """通用 public.xml 解析器，支持提取 type='color' 或 type='drawable' 的 ID 映射"""
+    """通用 public.xml 解析器，提取指定 type (color/drawable/string) 的 ID -> 混淆 Name 映射"""
     id_to_name = {}
     public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
     if public_xml.exists():
@@ -239,7 +238,7 @@ def parse_public_xml_mappings(res_type: str) -> dict[str, str]:
             pattern = re.compile(rf'<public\s+type="{res_type}"\s+name="([^"]+)"\s+id="(0x7f[0-9a-fA-F]{6})"')
             for line in f:
                 match = pattern.search(line)
-                if match:  # <--- 增加此判断，防止 NoneType 没有 group()
+                if match:
                     id_to_name[match.group(2).lower()] = match.group(1)
     print(f"[+] public.xml 解析 [{res_type}] 完成，获取 {len(id_to_name)} 个资源 ID 定义")
     return id_to_name
@@ -277,10 +276,17 @@ def parse_smali_mappings() -> dict[str, str]:
     return key_to_id
 
 def process_mapping_items(items: list, key_to_id: dict, id_to_obf_name: dict) -> list:
-    """公共配置条目混淆映射对齐处理"""
+    """公共配置条目混淆映射对齐处理 (修复了只搜 key 导致 name 字段匹配失败的问题)"""
     processed = []
     for item in items:
-        raw_key = item.get("unobfuscated_key") or item.get("key") or item.get("name") or ""
+        # 兼容 key / name / unobfuscated_key / unobfuscated_name 各种入参方式
+        raw_key = (
+            item.get("unobfuscated_key") or 
+            item.get("unobfuscated_name") or 
+            item.get("key") or 
+            item.get("name") or 
+            ""
+        )
         if not raw_key:
             continue
 
@@ -289,13 +295,16 @@ def process_mapping_items(items: list, key_to_id: dict, id_to_obf_name: dict) ->
         final_obf_key = obf_name if obf_name else raw_key
 
         new_item = item.copy()
-        if "unobfuscated_key" in item:
+        
+        # 判断原始 JSON 的类型结构，输出对应的 obfuscated 字段
+        if "key" in item or "unobfuscated_key" in item or "light" in item:
             new_item["unobfuscated_key"] = raw_key
-        if "obfuscated_key" in item or "light" in item:
             new_item["obfuscated_key"] = final_obf_key
-        elif "name" in item:
-            new_item["name"] = raw_key
+            new_item.pop("key", None)  # 规范化输出
+        elif "name" in item or "file_path" in item:
+            new_item["unobfuscated_name"] = raw_key
             new_item["obfuscated_name"] = final_obf_key
+            new_item.pop("name", None)
 
         processed.append(new_item)
     return processed
@@ -304,9 +313,10 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
     if not BASE_CONFIG_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础配置文件: {BASE_CONFIG_PATH}")
 
-    # 解析映射
+    # 解析三种类型的公有映射
     color_public = parse_public_xml_mappings("color")
     drawable_public = parse_public_xml_mappings("drawable")
+    string_public = parse_public_xml_mappings("string")
     key_to_id = parse_smali_mappings()
 
     with open(BASE_CONFIG_PATH, "r", encoding="utf-8") as f:
@@ -314,6 +324,7 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
 
     updated_colors = process_mapping_items(base_config.get("theme_colors", []), key_to_id, color_public)
     updated_drawables = process_mapping_items(base_config.get("theme_drawables", []), key_to_id, drawable_public)
+    updated_strings = process_mapping_items(base_config.get("theme_strings", []), key_to_id, string_public)
 
     safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_code)
@@ -326,7 +337,8 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
         "sha256": sha256_str,
         "changelog": changelog,
         "theme_colors": updated_colors,
-        "theme_drawables": updated_drawables
+        "theme_drawables": updated_drawables,
+        "theme_strings": updated_strings
     }
 
     config_path = CONFIG_DIR / filename
@@ -341,11 +353,11 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
 
 
 # ==============================================================================
-# 5. 阶段三：同步资源 (Colors & Drawables) 并编译 Overlay
+# 5. 阶段三：同步资源 (Colors, Drawables & Strings) 并编译 Overlay
 # ==============================================================================
 
 def sync_src_resources(config_file: Path):
-    """根据生成的版本 JSON 同步 colors.xml 以及重命名并复制 drawables 资源"""
+    """根据生成的版本 JSON 同步 colors.xml, strings.xml 以及 drawables 资源"""
     with open(config_file, "r", encoding="utf-8") as f:
         config_data = json.load(f)
 
@@ -378,9 +390,23 @@ def sync_src_resources(config_file: Path):
     (values_night_dir / "colors.xml").write_text("\n".join(night_xml), encoding="utf-8")
     print("[+] 颜色资源 colors.xml 同步完成")
 
-    # 2. 处理并复制 Drawables
+    # 2. 写入 Strings
+    string_xml = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
+    for item in config_data.get("theme_strings", []):
+        key = item.get("obfuscated_key") or item.get("unobfuscated_key")
+        val = item.get("value")
+        if key and val is not None:
+            # 简单的 XML 转义
+            safe_val = str(val).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace('"', '&quot;').replace("'", "\\'")
+            string_xml.append(f'    <string name="{key}">{safe_val}</string>')
+    string_xml.append('</resources>\n')
+
+    (values_day_dir / "strings.xml").write_text("\n".join(string_xml), encoding="utf-8")
+    print("[+] 字符串资源 strings.xml 同步完成")
+
+    # 3. 处理并复制 Drawables
     for item in config_data.get("theme_drawables", []):
-        obf_name = item.get("obfuscated_name") or item.get("name")
+        obf_name = item.get("obfuscated_name") or item.get("unobfuscated_name")
         file_path = item.get("file_path")
         if not obf_name or not file_path:
             continue
@@ -390,7 +416,8 @@ def sync_src_resources(config_file: Path):
             ext = src_file.suffix.lstrip('.')
             target_file = drawable_target_dir / f"{obf_name}.{ext}"
             shutil.copy2(src_file, target_file)
-            print(f"[Drawable] 已适配替换: {item.get('name')} -> {target_file.name}")
+            raw_name = item.get('unobfuscated_name') or item.get('name')
+            print(f"[Drawable] 已适配替换: {raw_name} -> {target_file.name}")
         else:
             print(f"[!] 警告: 未找到指定的 Drawable 资源文件: {src_file}")
 
