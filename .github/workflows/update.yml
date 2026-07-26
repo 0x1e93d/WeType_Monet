@@ -62,18 +62,33 @@ jobs:
           fi
           echo "ZIP_NAME=${MODULE_ID}_${VERSION}.zip" >> $GITHUB_ENV
 
+      - name: 自动定位打好的 KernelSU 模块压缩包 (.zip)
+        if: env.HAS_UPDATE == 'true'
+        run: |
+            # 自动在根目录下查找最新生成的 .zip 模块文件（排除可能存在的临时 zip）
+            BUILT_ZIP=$(ls -t *.zip 2>/dev/null | head -n 1 || true)
+            
+            if [ -n "$BUILT_ZIP" ]; then
+                echo "ACTUAL_ZIP_PATH=${BUILT_ZIP}" >> $GITHUB_ENV
+                echo "找到打包产物: ${BUILT_ZIP}"
+            else
+                echo "ERROR: 根目录下未找到任何 .zip 模块产物！"
+                exit 1
+            fi
+
       - name: 上传产物 1：版本 JSON 文件
         if: env.HAS_UPDATE == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.JSON_FILENAME }}
-          path: ${{ env.JSON_PATH }}
-          if-no-files-found: error
+            name: ${{ env.JSON_FILENAME }}
+            path: ${{ env.JSON_PATH }}
+            if-no-files-found: error
 
       - name: 上传产物 2：KernelSU 模块压缩包 (.zip)
         if: env.HAS_UPDATE == 'true'
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.ZIP_NAME }}
-          path: ${{ env.ZIP_NAME }}
-          if-no-files-found: error
+            # 直接使用构建出来的真实 zip 文件名作为 Artifact 名称
+            name: ${{ env.ACTUAL_ZIP_PATH }}
+            path: ${{ env.ACTUAL_ZIP_PATH }}
+            if-no-files-found: error
