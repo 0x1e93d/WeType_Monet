@@ -433,7 +433,7 @@ def generate_version_config(
 # ==============================================================================
 
 def sync_src_colors_xml(config_file: Path):
-    """根据生成的配置文件更新 Overlay 资源文件"""
+    """根据生成的版本 JSON 配置文件更新 Overlay 的 colors.xml 资源文件"""
     with open(config_file, "r", encoding="utf-8") as f:
         theme_colors = json.load(f).get("theme_colors", [])
 
@@ -448,18 +448,23 @@ def sync_src_colors_xml(config_file: Path):
     night_xml_lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
 
     for item in theme_colors:
-        # 优先采用混淆后的 Key，若没有则回退未混淆 Key
-        key_name = item.get("obfuscated_key") or item.get("unobfuscated_key")
-        if not key_name:
+        # 核心逻辑修复：强制优先读取混淆后的 Key (obfuscated_key)
+        # 只有在 obfuscated_key 为空或不存在时，才回退 unobfuscated_key
+        obf_key = item.get("obfuscated_key", "").strip()
+        unobf_key = item.get("unobfuscated_key", "").strip()
+        
+        target_key = obf_key if obf_key else unobf_key
+
+        if not target_key:
             continue
 
         light_color = item.get("light")
         if light_color:
-            day_xml_lines.append(f'    <color name="{key_name}">{light_color}</color>')
+            day_xml_lines.append(f'    <color name="{target_key}">{light_color}</color>')
 
         night_color = item.get("night")
         if night_color:
-            night_xml_lines.append(f'    <color name="{key_name}">{night_color}</color>')
+            night_xml_lines.append(f'    <color name="{target_key}">{night_color}</color>')
 
     day_xml_lines.append('</resources>\n')
     night_xml_lines.append('</resources>\n')
@@ -470,8 +475,8 @@ def sync_src_colors_xml(config_file: Path):
     day_path.write_text("\n".join(day_xml_lines), encoding="utf-8")
     night_path.write_text("\n".join(night_xml_lines), encoding="utf-8")
 
-    print(f"[+] 补全日间模式色彩: {day_path}")
-    print(f"[+] 补全夜间模式色彩: {night_path}")
+    print(f"[+] 成功写入混淆 Key 至日间模式色彩文件: {day_path}")
+    print(f"[+] 成功写入混淆 Key 至夜间模式色彩文件: {night_path}")
 
 def build_overlay_apk():
     """编译并签名 Overlay APK"""
