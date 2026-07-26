@@ -669,6 +669,11 @@
             "description": "版权信息"
         },
         {
+            "key": "ime_custom_phrase_tips",
+            "value": null,
+            "description": "自定义短语提示"
+        },
+        {
             "key": "ime_about_copyright_en",
             "value": "作者: 酷安@1e93d",
             "description": "英文版权信息"
