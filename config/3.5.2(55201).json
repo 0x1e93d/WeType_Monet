@@ -624,178 +624,184 @@
     ],
     "theme_drawables": [
         {
-            "unobfuscated_key": "ime_logo_green",
-            "obfuscated_key": "j4",
-            "description": "工具栏 Logo 绿色",
-            "file_path": "overlay/assets/drawable/ime_logo_green.xml"
-        },
-        {
-            "unobfuscated_key": "ime_logo_green_dark",
-            "obfuscated_key": "j5",
-            "description": "工具栏 Logo 绿色（深色）",
-            "file_path": "overlay/assets/drawable/ime_logo_green_dark.xml"
+            "unobfuscated_key": "bg_file_transfer_airdrop_pill_green",
+            "obfuscated_key": "cs",
+            "description": "隔空传送绿色胶囊背景",
+            "file_path": "overlay/assets/drawable/bg_file_transfer_airdrop_pill_green.xml"
         },
         {
             "unobfuscated_key": "icon_app_plus_setup_sticker",
             "obfuscated_key": "icon_app_plus_setup_sticker",
-            "description": "",
+            "description": "应用扩展设置贴纸图标",
             "file_path": "overlay/assets/drawable/icon_app_plus_setup_sticker.xml"
         },
         {
             "unobfuscated_key": "icon_app_plus_setup_sticker_dark",
             "obfuscated_key": "icon_app_plus_setup_sticker_dark",
-            "description": "",
+            "description": "应用扩展设置贴纸图标（深色）",
             "file_path": "overlay/assets/drawable/icon_app_plus_setup_sticker_dark.xml"
         },
         {
             "unobfuscated_key": "icon_candidate_tip_toast_show",
             "obfuscated_key": "icon_candidate_tip_toast_show",
-            "description": "",
+            "description": "候选栏提示图标",
             "file_path": "overlay/assets/drawable/icon_candidate_tip_toast_show.xml"
         },
         {
             "unobfuscated_key": "icon_custom_toolbar_sticker",
             "obfuscated_key": "icon_custom_toolbar_sticker",
-            "description": "",
+            "description": "自定义工具栏贴纸图标",
             "file_path": "overlay/assets/drawable/icon_custom_toolbar_sticker.xml"
         },
         {
             "unobfuscated_key": "icon_emojibar_sticker",
             "obfuscated_key": "icon_emojibar_sticker",
-            "description": "",
+            "description": "表情栏贴纸图标",
             "file_path": "overlay/assets/drawable/icon_emojibar_sticker.xml"
         },
         {
             "unobfuscated_key": "icon_illustration_gif",
             "obfuscated_key": "icon_illustration_gif",
-            "description": "",
+            "description": "GIF 插图图标",
             "file_path": "overlay/assets/drawable/icon_illustration_gif.xml"
-        },
-        {
-            "unobfuscated_key": "icon_keys_back_pressed",
-            "obfuscated_key": "icon_keys_back_pressed",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_keys_back_pressed.xml"
         },
         {
             "unobfuscated_key": "icon_keys_back",
             "obfuscated_key": "icon_keys_back",
-            "description": "",
+            "description": "键盘返回键图标",
             "file_path": "overlay/assets/drawable/icon_keys_back.xml"
         },
         {
-            "unobfuscated_key": "icon_keys_capslock_dark",
-            "obfuscated_key": "icon_keys_capslock_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_keys_capslock_dark.xml"
+            "unobfuscated_key": "icon_keys_back_pressed",
+            "obfuscated_key": "icon_keys_back_pressed",
+            "description": "键盘返回键图标（按下）",
+            "file_path": "overlay/assets/drawable/icon_keys_back_pressed.xml"
         },
         {
             "unobfuscated_key": "icon_keys_capslock",
             "obfuscated_key": "icon_keys_capslock",
-            "description": "",
+            "description": "键盘大写锁定键图标",
             "file_path": "overlay/assets/drawable/icon_keys_capslock.xml"
         },
         {
-            "unobfuscated_key": "icon_keys_capslocked_dark",
-            "obfuscated_key": "icon_keys_capslocked_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_keys_capslocked_dark.xml"
+            "unobfuscated_key": "icon_keys_capslock_dark",
+            "obfuscated_key": "icon_keys_capslock_dark",
+            "description": "键盘大写锁定键图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_keys_capslock_dark.xml"
         },
         {
             "unobfuscated_key": "icon_keys_capslocked",
             "obfuscated_key": "icon_keys_capslocked",
-            "description": "",
+            "description": "键盘大写已锁定图标",
             "file_path": "overlay/assets/drawable/icon_keys_capslocked.xml"
         },
         {
-            "unobfuscated_key": "icon_keys_delete_dark",
-            "obfuscated_key": "icon_keys_delete_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_keys_delete_dark.xml"
+            "unobfuscated_key": "icon_keys_capslocked_dark",
+            "obfuscated_key": "icon_keys_capslocked_dark",
+            "description": "键盘大写已锁定图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_keys_capslocked_dark.xml"
         },
         {
             "unobfuscated_key": "icon_keys_delete",
             "obfuscated_key": "icon_keys_delete",
-            "description": "",
+            "description": "键盘删除键图标",
             "file_path": "overlay/assets/drawable/icon_keys_delete.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_delete_dark",
+            "obfuscated_key": "icon_keys_delete_dark",
+            "description": "键盘删除键图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_keys_delete_dark.xml"
         },
         {
             "unobfuscated_key": "icon_keys_delete_pressed",
             "obfuscated_key": "icon_keys_delete_pressed",
-            "description": "",
+            "description": "键盘删除键图标（按下）",
             "file_path": "overlay/assets/drawable/icon_keys_delete_pressed.xml"
-        },
-        {
-            "unobfuscated_key": "icon_keys_emoji_dark",
-            "obfuscated_key": "icon_keys_emoji_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_keys_emoji_dark.xml"
         },
         {
             "unobfuscated_key": "icon_keys_emoji",
             "obfuscated_key": "icon_keys_emoji",
-            "description": "",
+            "description": "键盘表情键图标",
             "file_path": "overlay/assets/drawable/icon_keys_emoji.xml"
         },
         {
-            "unobfuscated_key": "icon_keys_outlinedcapslock_dark",
-            "obfuscated_key": "icon_keys_outlinedcapslock_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_keys_outlinedcapslock_dark.xml"
+            "unobfuscated_key": "icon_keys_emoji_dark",
+            "obfuscated_key": "icon_keys_emoji_dark",
+            "description": "键盘表情键图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_keys_emoji_dark.xml"
         },
         {
             "unobfuscated_key": "icon_keys_outlinedcapslock",
             "obfuscated_key": "icon_keys_outlinedcapslock",
-            "description": "",
+            "description": "键盘轮廓大写锁定键图标",
             "file_path": "overlay/assets/drawable/icon_keys_outlinedcapslock.xml"
         },
         {
-            "unobfuscated_key": "icon_keys_voice_dark",
-            "obfuscated_key": "icon_keys_voice_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_keys_voice_dark.xml"
+            "unobfuscated_key": "icon_keys_outlinedcapslock_dark",
+            "obfuscated_key": "icon_keys_outlinedcapslock_dark",
+            "description": "键盘轮廓大写锁定键图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_keys_outlinedcapslock_dark.xml"
         },
         {
             "unobfuscated_key": "icon_keys_voice",
             "obfuscated_key": "icon_keys_voice",
-            "description": "",
+            "description": "键盘语音键图标",
             "file_path": "overlay/assets/drawable/icon_keys_voice.xml"
         },
         {
-            "unobfuscated_key": "icon_remarks_translate_dark",
-            "obfuscated_key": "icon_remarks_translate_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_remarks_translate_dark.xml"
+            "unobfuscated_key": "icon_keys_voice_dark",
+            "obfuscated_key": "icon_keys_voice_dark",
+            "description": "键盘语音键图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_keys_voice_dark.xml"
         },
         {
             "unobfuscated_key": "icon_remarks_translate",
             "obfuscated_key": "icon_remarks_translate",
-            "description": "",
+            "description": "翻译备注图标",
             "file_path": "overlay/assets/drawable/icon_remarks_translate.xml"
+        },
+        {
+            "unobfuscated_key": "icon_remarks_translate_dark",
+            "obfuscated_key": "icon_remarks_translate_dark",
+            "description": "翻译备注图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_remarks_translate_dark.xml"
         },
         {
             "unobfuscated_key": "icon_toolbar_sticker",
             "obfuscated_key": "icon_toolbar_sticker",
-            "description": "",
+            "description": "工具栏贴纸图标",
             "file_path": "overlay/assets/drawable/icon_toolbar_sticker.xml"
-        },
-        {
-            "unobfuscated_key": "icon_translate_arrow_dark",
-            "obfuscated_key": "icon_translate_arrow_dark",
-            "description": "",
-            "file_path": "overlay/assets/drawable/icon_translate_arrow_dark.xml"
         },
         {
             "unobfuscated_key": "icon_translate_arrow",
             "obfuscated_key": "icon_translate_arrow",
-            "description": "",
+            "description": "翻译箭头图标",
             "file_path": "overlay/assets/drawable/icon_translate_arrow.xml"
+        },
+        {
+            "unobfuscated_key": "icon_translate_arrow_dark",
+            "obfuscated_key": "icon_translate_arrow_dark",
+            "description": "翻译箭头图标（深色）",
+            "file_path": "overlay/assets/drawable/icon_translate_arrow_dark.xml"
         },
         {
             "unobfuscated_key": "icon_voice_sound",
             "obfuscated_key": "icon_voice_sound",
-            "description": "",
+            "description": "语音声音图标",
             "file_path": "overlay/assets/drawable/icon_voice_sound.xml"
+        },
+        {
+            "unobfuscated_key": "ime_logo_green",
+            "obfuscated_key": "j4",
+            "description": "工具栏绿色 Logo",
+            "file_path": "overlay/assets/drawable/ime_logo_green.xml"
+        },
+        {
+            "unobfuscated_key": "ime_logo_green_dark",
+            "obfuscated_key": "j5",
+            "description": "工具栏绿色 Logo（深色）",
+            "file_path": "overlay/assets/drawable/ime_logo_green_dark.xml"
         }
     ]
 }
