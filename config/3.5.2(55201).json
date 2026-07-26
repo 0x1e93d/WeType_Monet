@@ -1,0 +1,788 @@
+{
+    "version_name": "3.5.2",
+    "version_code": "55201",
+    "release_date": "",
+    "sha256": "71397a9fcb21123b229e68d7481d5a81240cf9b142b548c082ffcc07aa5ad621",
+    "changelog": [],
+    "theme_colors": [
+        {
+            "unobfuscated_key": "ime_key_back_icon_color",
+            "obfuscated_key": "ime_key_back_icon_color",
+            "description": "输入法键盘返回键图标颜色",
+            "light": "@android:color/system_on_surface_light",
+            "night": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_start_color",
+            "obfuscated_key": "gd",
+            "description": "背景色上部分",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_end_color",
+            "obfuscated_key": "g_",
+            "description": "背景色中间部分",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_keyboard_end_color",
+            "obfuscated_key": "pw",
+            "description": "背景色下部分",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_keyboard_background",
+            "obfuscated_key": "pu",
+            "description": "悬浮窗背景色",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_start_color",
+            "obfuscated_key": "kc",
+            "description": "背景色上部分",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_end_color",
+            "obfuscated_key": "k9",
+            "description": "背景色中间部分",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_keyboard_end_color",
+            "obfuscated_key": "nm",
+            "description": "背景色下部分",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_keyboard_background",
+            "obfuscated_key": "nk",
+            "description": "悬浮窗背景色",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_black",
+            "obfuscated_key": "fp",
+            "description": "菜单页面图标颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_black",
+            "obfuscated_key": "jo",
+            "description": "菜单页面图标颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_06",
+            "obfuscated_key": "gu",
+            "description": "菜单页面文字颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_06",
+            "obfuscated_key": "kt",
+            "description": "菜单页面文字颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_18",
+            "obfuscated_key": "hh",
+            "description": "分词界面容器背景颜色、菜单页面图标背景颜色",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_18",
+            "obfuscated_key": "ld",
+            "description": "分词界面容器背景颜色、菜单页面图标背景颜色",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_clipboard_item_bg_color",
+            "obfuscated_key": "gi",
+            "description": "剪切板项目背景色",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_clipboard_item_bg_color",
+            "obfuscated_key": "kh",
+            "description": "剪切板项目背景色",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_right_container_icon_color",
+            "obfuscated_key": "gc",
+            "description": "候选栏展开图标颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_right_container_icon_color",
+            "obfuscated_key": "kb",
+            "description": "候选栏展开图标颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_04",
+            "obfuscated_key": "gs",
+            "description": "候选栏展开图标颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_04",
+            "obfuscated_key": "kr",
+            "description": "候选栏展开图标颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_08",
+            "obfuscated_key": "gw",
+            "description": "翻译容器提示词字体颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_08",
+            "obfuscated_key": "kv",
+            "description": "翻译容器提示词字体颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_type_container_bg_color_fixed",
+            "obfuscated_key": "gf",
+            "description": "剪切板与常用语界面 Tab 栏背景颜色",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_type_container_bg_color_fixed",
+            "obfuscated_key": "ke",
+            "description": "剪切板与常用语界面 Tab 栏背景颜色",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_S5_type_selected_color",
+            "obfuscated_key": "f9",
+            "description": "符号与表情界面 Tab 栏背景颜色",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_S5_type_selected_color",
+            "obfuscated_key": "j6",
+            "description": "符号与表情界面 Tab 栏背景颜色",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_16",
+            "obfuscated_key": "hf",
+            "description": "工具栏图标背景颜色",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_16",
+            "obfuscated_key": "lb",
+            "description": "工具栏图标背景颜色",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_05",
+            "obfuscated_key": "gt",
+            "description": "工具栏图标颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_05",
+            "obfuscated_key": "ks",
+            "description": "工具栏图标颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_S5_img_type_icon_color_selected",
+            "obfuscated_key": "f5",
+            "description": "符号和表情界面Tab选中状态图标颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_S5_img_type_icon_color_selected",
+            "obfuscated_key": "j2",
+            "description": "符号和表情界面Tab选中状态图标颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_12",
+            "obfuscated_key": "h8",
+            "description": "字母键、首个候选词、气泡背景颜色",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_12",
+            "obfuscated_key": "l4",
+            "description": "字母键、首个候选词、气泡背景颜色",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_bg",
+            "obfuscated_key": "hz",
+            "description": "字母键",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_bg",
+            "obfuscated_key": "lv",
+            "description": "字母键",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_text",
+            "obfuscated_key": "i3",
+            "description": "字母键字母字体颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_text",
+            "obfuscated_key": "lz",
+            "description": "字母键字母字体颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_07",
+            "obfuscated_key": "gv",
+            "description": "字母键上的字符颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_07",
+            "obfuscated_key": "ku",
+            "description": "字母键上的字符颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_19",
+            "obfuscated_key": "hi",
+            "description": "首个候选词字体颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_19",
+            "obfuscated_key": "le",
+            "description": "首个候选词字体颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_13",
+            "obfuscated_key": "h9",
+            "description": "功能键背景颜色",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_13",
+            "obfuscated_key": "l5",
+            "description": "功能键背景颜色",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_green_bg",
+            "obfuscated_key": "hm",
+            "description": "特殊功能键背景颜色",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_green_bg",
+            "obfuscated_key": "li",
+            "description": "特殊功能键背景颜色",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_14",
+            "obfuscated_key": "hb",
+            "description": "分词界面选中状态字体颜色、特殊功能键背景颜色",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_14",
+            "obfuscated_key": "l8",
+            "description": "分词界面选中状态字体颜色、特殊功能键背景颜色",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_14_Alpha_20",
+            "obfuscated_key": "hc",
+            "description": "分词界面选中状态背景颜色",
+            "light": "@android:color/system_secondary_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_14_Alpha_20",
+            "obfuscated_key": "l9",
+            "description": "分词界面选中状态背景颜色",
+            "light": "@android:color/system_secondary_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_17",
+            "obfuscated_key": "hg",
+            "description": "上滑删除气泡选中状态背景颜色",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_17",
+            "obfuscated_key": "lc",
+            "description": "上滑删除气泡选中状态背景颜色",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_02",
+            "obfuscated_key": "gq",
+            "description": "顶栏字体颜色",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_02",
+            "obfuscated_key": "kp",
+            "description": "顶栏字体颜色",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_10",
+            "obfuscated_key": "gy",
+            "description": "符号与表情界面Tab栏背景颜色",
+            "light": "@android:color/system_surface_container_low_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_10",
+            "obfuscated_key": "kx",
+            "description": "符号与表情界面Tab栏背景颜色",
+            "light": "@android:color/system_surface_container_high_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_00_Alpha_15",
+            "obfuscated_key": "gm",
+            "description": "字母键底部阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_00_Alpha_15",
+            "obfuscated_key": "kl",
+            "description": "字母键底部阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_00_Alpha_25",
+            "obfuscated_key": "gn",
+            "description": "功能键底部描边",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_00_Alpha_25",
+            "obfuscated_key": "km",
+            "description": "功能键底部描边",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_divider",
+            "obfuscated_key": "i6",
+            "description": "选词界面分隔线",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_divider",
+            "obfuscated_key": "m2",
+            "description": "选词界面分隔线",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_alternative_keyboard_bg_color",
+            "obfuscated_key": "fk",
+            "description": "选词界面侧栏背景颜色",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_alternative_keyboard_bg_color",
+            "obfuscated_key": "ji",
+            "description": "选词界面侧栏背景颜色",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_candidate_syllable_select_bg_color_light",
+            "obfuscated_key": "dv",
+            "description": "首个候选词纠错字体颜色",
+            "light": "@android:color/system_primary_light"
+        },
+        {
+            "unobfuscated_key": "ime_candidate_syllable_select_bg_color_dark",
+            "obfuscated_key": "du",
+            "description": "首个候选词纠错字体颜色",
+            "light": "@android:color/system_primary_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_09",
+            "obfuscated_key": "gx",
+            "description": "九键数字侧栏分隔线",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_09",
+            "obfuscated_key": "kw",
+            "description": "九键数字侧栏分隔线",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_15",
+            "obfuscated_key": "he",
+            "description": "隔空传送背景颜色",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_15",
+            "obfuscated_key": "la",
+            "description": "隔空传送背景颜色",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_BW_97",
+            "obfuscated_key": "em",
+            "description": "隔空传送弹窗背景色",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_BW_97",
+            "obfuscated_key": "ij",
+            "description": "隔空传送弹窗背景色",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_toolbar_select_bg_color",
+            "obfuscated_key": "qm",
+            "description": "皮肤工具栏选择背景颜色",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_toolbar_select_bg_color",
+            "obfuscated_key": "oc",
+            "description": "皮肤工具栏选择背景颜色",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_white_border_color",
+            "obfuscated_key": "po",
+            "description": "按键白色边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_white_border_color",
+            "obfuscated_key": "ne",
+            "description": "按键白色边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_grey_border_color",
+            "obfuscated_key": "pf",
+            "description": "按键灰色边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_grey_border_color",
+            "obfuscated_key": "n6",
+            "description": "按键灰色边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_green_border_color",
+            "obfuscated_key": "p_",
+            "description": "按键绿色边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_green_border_color",
+            "obfuscated_key": "n0",
+            "description": "按键绿色边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_border",
+            "obfuscated_key": "i0",
+            "description": "白色按钮边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_border",
+            "obfuscated_key": "lw",
+            "description": "白色按钮边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_grey_border",
+            "obfuscated_key": "ht",
+            "description": "灰色按钮边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_grey_border",
+            "obfuscated_key": "lp",
+            "description": "灰色按钮边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_green_border",
+            "obfuscated_key": "hn",
+            "description": "绿色按钮边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_green_border",
+            "obfuscated_key": "lj",
+            "description": "绿色按钮边框",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_white_shadow_color",
+            "obfuscated_key": "pr",
+            "description": "按键白色阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_white_shadow_color",
+            "obfuscated_key": "nh",
+            "description": "按键白色阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_grey_shadow_color",
+            "obfuscated_key": "pi",
+            "description": "按键灰色阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_grey_shadow_color",
+            "obfuscated_key": "n9",
+            "description": "按键灰色阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_green_shadow_color",
+            "obfuscated_key": "pc",
+            "description": "按键绿色阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_green_shadow_color",
+            "obfuscated_key": "n3",
+            "description": "按键绿色阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_shadow",
+            "obfuscated_key": "i2",
+            "description": "白色按钮阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_shadow",
+            "obfuscated_key": "ly",
+            "description": "白色按钮阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_grey_shadow",
+            "obfuscated_key": "hv",
+            "description": "灰色按钮阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_grey_shadow",
+            "obfuscated_key": "lr",
+            "description": "灰色按钮阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_green_shadow",
+            "obfuscated_key": "hp",
+            "description": "绿色按钮阴影",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_green_shadow",
+            "obfuscated_key": "ll",
+            "description": "绿色按钮阴影",
+            "light": "@android:color/transparent"
+        }
+    ],
+    "theme_strings": [
+        {
+            "unobfuscated_key": "ime_about_copyright",
+            "obfuscated_key": "cd",
+            "description": "版权信息",
+            "value": "酷安@1e93d"
+        }
+    ],
+    "theme_drawables": [
+        {
+            "unobfuscated_key": "ime_logo_green",
+            "obfuscated_key": "j4",
+            "description": "工具栏 Logo 绿色",
+            "file_path": "src/drawable/ime_logo_green.xml"
+        },
+        {
+            "unobfuscated_key": "ime_logo_green_dark",
+            "obfuscated_key": "j5",
+            "description": "工具栏 Logo 绿色（深色）",
+            "file_path": "src/drawable/ime_logo_green_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_app_plus_setup_sticker",
+            "obfuscated_key": "icon_app_plus_setup_sticker",
+            "description": "",
+            "file_path": "src/drawable/icon_app_plus_setup_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_app_plus_setup_sticker_dark",
+            "obfuscated_key": "icon_app_plus_setup_sticker_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_app_plus_setup_sticker_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_candidate_tip_toast_show",
+            "obfuscated_key": "icon_candidate_tip_toast_show",
+            "description": "",
+            "file_path": "src/drawable/icon_candidate_tip_toast_show.xml"
+        },
+        {
+            "unobfuscated_key": "icon_custom_toolbar_sticker",
+            "obfuscated_key": "icon_custom_toolbar_sticker",
+            "description": "",
+            "file_path": "src/drawable/icon_custom_toolbar_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_emojibar_sticker",
+            "obfuscated_key": "icon_emojibar_sticker",
+            "description": "",
+            "file_path": "src/drawable/icon_emojibar_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_illustration_gif",
+            "obfuscated_key": "icon_illustration_gif",
+            "description": "",
+            "file_path": "src/drawable/icon_illustration_gif.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_back_pressed",
+            "obfuscated_key": "icon_keys_back_pressed",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_back_pressed.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_back",
+            "obfuscated_key": "icon_keys_back",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_back.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslock_dark",
+            "obfuscated_key": "icon_keys_capslock_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_capslock_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslock",
+            "obfuscated_key": "icon_keys_capslock",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_capslock.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslocked_dark",
+            "obfuscated_key": "icon_keys_capslocked_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_capslocked_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslocked",
+            "obfuscated_key": "icon_keys_capslocked",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_capslocked.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_delete_dark",
+            "obfuscated_key": "icon_keys_delete_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_delete_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_delete",
+            "obfuscated_key": "icon_keys_delete",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_delete.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_delete_pressed",
+            "obfuscated_key": "icon_keys_delete_pressed",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_delete_pressed.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_emoji_dark",
+            "obfuscated_key": "icon_keys_emoji_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_emoji_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_emoji",
+            "obfuscated_key": "icon_keys_emoji",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_emoji.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_outlinedcapslock_dark",
+            "obfuscated_key": "icon_keys_outlinedcapslock_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_outlinedcapslock_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_outlinedcapslock",
+            "obfuscated_key": "icon_keys_outlinedcapslock",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_outlinedcapslock.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_voice_dark",
+            "obfuscated_key": "icon_keys_voice_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_voice_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_voice",
+            "obfuscated_key": "icon_keys_voice",
+            "description": "",
+            "file_path": "src/drawable/icon_keys_voice.xml"
+        },
+        {
+            "unobfuscated_key": "icon_remarks_translate_dark",
+            "obfuscated_key": "icon_remarks_translate_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_remarks_translate_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_remarks_translate",
+            "obfuscated_key": "icon_remarks_translate",
+            "description": "",
+            "file_path": "src/drawable/icon_remarks_translate.xml"
+        },
+        {
+            "unobfuscated_key": "icon_toolbar_sticker",
+            "obfuscated_key": "icon_toolbar_sticker",
+            "description": "",
+            "file_path": "src/drawable/icon_toolbar_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_translate_arrow_dark",
+            "obfuscated_key": "icon_translate_arrow_dark",
+            "description": "",
+            "file_path": "src/drawable/icon_translate_arrow_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_translate_arrow",
+            "obfuscated_key": "icon_translate_arrow",
+            "description": "",
+            "file_path": "src/drawable/icon_translate_arrow.xml"
+        },
+        {
+            "unobfuscated_key": "icon_voice_sound",
+            "obfuscated_key": "icon_voice_sound",
+            "description": "",
+            "file_path": "src/drawable/icon_voice_sound.xml"
+        }
+    ]
+}
