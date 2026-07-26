@@ -56,7 +56,7 @@ jobs:
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
         run: |
-          python3 build.py
+          python3 scripts/build.py
 
       - name: Commit Updated Config JSON to Repo
         id: commit_config
