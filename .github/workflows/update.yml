@@ -1,17 +1,18 @@
 name: Auto Update & Build KSU Module
 
 on:
-  schedule:
-    # 每天定时检查更新 (UTC时间 0:00，即北京时间 8:00)
+#   schedule:
+    # 每天定时检查更新 (UTC 时间 0:00，即北京时间 8:00)
+    # 注意：cron 表达式必须用单引号包裹
     # - cron: '0 0 * * *'
-  workflow_dispatch: # 支持在 GitHub 界面手动触发执行
+  workflow_dispatch: # 支持手动触发
 
 jobs:
   update-and-build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出仓库代码
+      - name: 检出代码
         uses: actions/checkout@v4
 
       - name: 设置 Python 环境
@@ -25,7 +26,7 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: 安装系统依赖 (Apktool) 与 Python 库
+      - name: 安装系统依赖与 Python 库
         run: |
           sudo apt-get update
           sudo apt-get install -y apktool zip
@@ -34,18 +35,23 @@ jobs:
       - name: 运行 update.py 自动检测更新与构建
         id: run_update
         run: |
-          # 执行 update_overlay.py，内部会进行 SHA256 校验、解包解析，生成 config/版本号.json 并调用 build_overlay.py
-          python3 scripts/update_overlay.py
+          # 运行升级脚本，该脚本内部会在更新时自动调用 build.py
+          python3 scripts/update.py
           
-          # 动态查找 config/ 下除了 base_colors.json 之外最新生成的 JSON 文件路径
-          LATEST_JSON=$(ls -t config/*.json | grep -v "base_colors.json" | head -n 1)
-          echo "JSON_PATH=${LATEST_JSON}" >> $GITHUB_ENV
+          # 查找 config/ 下除了 base_colors.json 外最新生成的 JSON 文件
+          LATEST_JSON=$(ls -t config/*.json 2>/dev/null | grep -v "base_colors.json" | head -n 1 || true)
           
-          # 获取生成的 JSON 文件名（例如 3.5.2（105020）.json）
-          JSON_FILENAME=$(basename "${LATEST_JSON}")
-          echo "JSON_FILENAME=${JSON_FILENAME}" >> $GITHUB_ENV
+          if [ -n "$LATEST_JSON" ]; then
+            echo "JSON_PATH=${LATEST_JSON}" >> $GITHUB_ENV
+            echo "JSON_FILENAME=$(basename "${LATEST_JSON}")" >> $GITHUB_ENV
+            echo "HAS_UPDATE=true" >> $GITHUB_ENV
+          else
+            echo "HAS_UPDATE=false" >> $GITHUB_ENV
+            echo "未发现新版本的配置文件，可能未检测到版本更新。"
+          fi
 
       - name: 读取模块信息 (确定 Zip 名称)
+        if: env.HAS_UPDATE == 'true'
         run: |
           if [ -f "module.prop" ]; then
             MODULE_ID=$(grep -E "^id=" module.prop | cut -d'=' -f2 | tr -d '\r')
@@ -54,10 +60,10 @@ jobs:
             MODULE_ID="WeType_Overlay"
             VERSION="latest"
           fi
-          ZIP_NAME="${MODULE_ID}_${VERSION}.zip"
-          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
+          echo "ZIP_NAME=${MODULE_ID}_${VERSION}.zip" >> $GITHUB_ENV
 
-      - name: 上传产物 1：生成的版本 JSON 文件
+      - name: 上传产物 1：版本 JSON 文件
+        if: env.HAS_UPDATE == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.JSON_FILENAME }}
@@ -65,6 +71,7 @@ jobs:
           if-no-files-found: error
 
       - name: 上传产物 2：KernelSU 模块压缩包 (.zip)
+        if: env.HAS_UPDATE == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ${{ env.ZIP_NAME }}
