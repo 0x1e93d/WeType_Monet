@@ -619,7 +619,13 @@
             "unobfuscated_key": "ime_about_copyright",
             "obfuscated_key": "cd",
             "description": "版权信息",
-            "value": "酷安@1e93d"
+            "value": "微信输入法 Monet"
+        },
+        {
+            "unobfuscated_key": "ime_about_copyright_en",
+            "obfuscated_key": "ce",
+            "description": "英文版权信息",
+            "value": "作者: 酷安@1e93d"
         }
     ],
     "theme_drawables": [
