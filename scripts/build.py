@@ -1,330 +1,224 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import os
 import shutil
 import subprocess
 import zipfile
 from datetime import datetime
+from pathlib import Path
 
-# ==================== 第一步：路径配置 ====================
+# ----------------- 路径配置 -----------------
+SCRIPTS_DIR = Path(__file__).resolve().parent
+PROJECT_ROOT = SCRIPTS_DIR.parent
 
-# 获取当前脚本（比如 build.py）所在的文件夹绝对路径
-SCRIPTS_DIR = os.path.dirname(os.path.abspath(__file__))
+SRC_DIR = PROJECT_ROOT / "src"
+OUT_DIR = PROJECT_ROOT / "out"
+BUILD_TMP_DIR = OUT_DIR / "build_tmp"
+TEMPLATE_DIR = PROJECT_ROOT / "module_template"
 
-# 获取项目的根目录
-PROJECT_ROOT = os.path.dirname(SCRIPTS_DIR)
-
-# 源码与资源目录：存放 res/ 资源和 AndroidManifest.xml
-SRC_DIR = os.path.join(PROJECT_ROOT, "src")
-
-# 最终产物输出目录
-OUT_DIR = os.path.join(PROJECT_ROOT, "out")
-
-# 临时打包构建目录 (WeType_Gboard/out/build_tmp)
-BUILD_TMP_DIR = os.path.join(OUT_DIR, "build_tmp")
-
-# 模块模板目录：存放 META-INF、customize.sh 等模版文件
-TEMPLATE_DIR = os.path.join(PROJECT_ROOT, "module_template")
-
-
-# ==================== 第二步：模块常量配置 ====================
-
+# ----------------- 模块信息 -----------------
 MODULE_ID = "Wetype_Monet"
 MODULE_NAME = "微信输入法 Monet"
 MODULE_AUTHOR = "酷安@1e93d"
 MODULE_DESCRIPTION = "为微信输入法提供 Monet 动态色彩主题。"
-
 BASE_VERSION = "v1.0.0"
 UPDATE_JSON_URL = ""
 
+# ----------------- Git 工具函数 -----------------
 
-# ==================== 第三步：Git 版本工具函数 ====================
-
-def get_git_commit_count():
-    """获取 Git 的总提交次数，用作 versionCode（必须是纯数字且递增）"""
+def get_git_info() -> tuple[str, str]:
+    """获取 Git 提交次数 (versionCode) 与 Short Hash"""
     try:
-        count = subprocess.check_output(["git", "rev-list", "--count", "HEAD"], stderr=subprocess.DEVNULL)
-        return count.decode("utf-8").strip()
+        count = subprocess.check_output(["git", "rev-list", "--count", "HEAD"], stderr=subprocess.DEVNULL, text=True).strip()
+        git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL, text=True).strip()
+        return count or "1", git_hash or "dev"
     except Exception:
-        return "1"
+        return "1", "dev"
 
+# ----------------- SDK / Java 环境工具 -----------------
 
-def get_git_short_hash():
-    """获取当前提交的 short hash (如 a1b2c3d)"""
-    try:
-        git_hash = subprocess.check_output(["git", "rev-parse", "--short", "HEAD"], stderr=subprocess.DEVNULL)
-        return git_hash.decode("utf-8").strip()
-    except Exception:
-        return "dev"
+def fix_java_env() -> str | None:
+    """自动纠正并返回 JAVA_HOME"""
+    if java_home := os.environ.get("JAVA_HOME"):
+        exe = "java.exe" if os.name == "nt" else "java"
+        if (Path(java_home) / "bin" / exe).exists():
+            return java_home
 
+    if java_bin := shutil.which("java"):
+        guessed = str(Path(java_bin).resolve().parent.parent)
+        os.environ["JAVA_HOME"] = guessed
+        return guessed
 
-# ==================== 第四步：跨平台查找构建工具与环境修复 ====================
-
-def fix_java_environment():
-    """检查并自动修复 JAVA_HOME 环境变量，解决 apksigner 依赖 Java 的问题"""
-    java_home = os.environ.get("JAVA_HOME")
-    exe_name = "java.exe" if os.name == "nt" else "java"
-
-    # 如果当前 JAVA_HOME 路径正常，直接返回
-    if java_home and os.path.exists(os.path.join(java_home, "bin", exe_name)):
-        return java_home
-
-    # 尝试自动定位 Android Studio 自带的 jbr/JDK
-    local_appdata = os.environ.get("LOCALAPPDATA", "")
-    candidates = [
-        r"C:\Program Files\Android\Android Studio\jbr",
-        r"C:\Program Files (x86)\Android\Android Studio\jbr",
-        os.path.join(local_appdata, "Android", "Sdk", "jbr"),
-    ]
-
-    for candidate in candidates:
-        if os.path.exists(os.path.join(candidate, "bin", exe_name)):
-            os.environ["JAVA_HOME"] = candidate
-            print(f"[i] 自动修复 JAVA_HOME 为 Android Studio 环境: {candidate}")
-            return candidate
-
-    # 尝试从系统 PATH 中推导
-    java_bin = shutil.which("java")
-    if java_bin:
-        guessed_home = os.path.dirname(os.path.dirname(os.path.realpath(java_bin)))
-        os.environ["JAVA_HOME"] = guessed_home
-        print(f"[i] 从 PATH 推导并更新 JAVA_HOME: {guessed_home}")
-        return guessed_home
-
-    # 若原先路径失效且未找到替代路径，删除无效变量避免批处理脚本直接崩溃
-    if "JAVA_HOME" in os.environ and not os.path.exists(os.environ["JAVA_HOME"]):
-        del os.environ["JAVA_HOME"]
-        
     return None
 
-
-def ensure_debug_keystore():
-    """确保本地存在 debug.keystore，不存在则自动生成"""
-    keystore_path = os.path.join(os.path.expanduser("~"), ".android", "debug.keystore")
-    if os.path.exists(keystore_path):
-        return keystore_path
-
-    os.makedirs(os.path.dirname(keystore_path), exist_ok=True)
-    keytool = shutil.which("keytool")
-    if not keytool and os.environ.get("JAVA_HOME"):
-        cand = os.path.join(os.environ["JAVA_HOME"], "bin", "keytool.exe" if os.name == "nt" else "keytool")
-        if os.path.exists(cand):
-            keytool = cand
-
-    if not keytool:
-        raise RuntimeError("未检测到 keytool 且缺少 debug.keystore，无法签名！")
-
-    print("[i] 正在生成 Debug 签名密钥...")
-    cmd = [
-        keytool, "-genkeypair", "-v",
-        "-keystore", keystore_path,
-        "-storepass", "android",
-        "-alias", "androiddebugkey",
-        "-keypass", "android",
-        "-keyalg", "RSA",
-        "-keysize", "2048",
-        "-validity", "10000",
-        "-dname", "CN=Android Debug,O=Android,C=US"
-    ]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return keystore_path
-
-
-def find_sdk_tools():
-    """
-    自动查找 aapt2, zipalign, apksigner 与 android.jar 路径
-    兼容 Windows 本地环境与 GitHub Actions (Ubuntu / macOS / Windows) 环境
-    """
-    aapt2 = os.environ.get("AAPT2_PATH")
-    zipalign = os.environ.get("ZIPALIGN_PATH")
-    apksigner = os.environ.get("APKSIGNER_PATH")
-    android_jar = os.environ.get("ANDROID_JAR_PATH")
-
+def find_sdk_tools() -> tuple[Path, Path, Path, Path]:
+    """定位 aapt2, zipalign, apksigner, android.jar"""
     sdk_root = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
-    if not sdk_root:
+    if not sdk_root and os.name == "nt":
         local_appdata = os.environ.get("LOCALAPPDATA", "")
         if local_appdata:
-            sdk_root = os.path.join(local_appdata, "Android", "Sdk")
+            sdk_root = Path(local_appdata) / "Android" / "Sdk"
 
-    build_tools_dir = os.path.join(sdk_root, "build-tools") if sdk_root and os.path.exists(os.path.join(sdk_root, "build-tools")) else None
+    sdk_path = Path(sdk_root) if sdk_root and Path(sdk_root).exists() else None
+
+    # 寻找最新的 build-tools
     latest_build_tool = None
-    if build_tools_dir:
-        versions = sorted(os.listdir(build_tools_dir), reverse=True)
-        if versions:
-            latest_build_tool = os.path.join(build_tools_dir, versions[0])
+    if sdk_path and (sdk_path / "build-tools").exists():
+        bt_dirs = sorted((sdk_path / "build-tools").iterdir(), reverse=True)
+        if bt_dirs:
+            latest_build_tool = bt_dirs[0]
 
-    def locate_tool(env_val, tool_name):
-        if env_val and os.path.exists(env_val):
-            return env_val
-        found = shutil.which(tool_name)
-        if found:
-            return found
+    def locate(env_var: str, tool_name: str) -> Path:
+        if (val := os.environ.get(env_var)) and Path(val).exists():
+            return Path(val)
+        if found := shutil.which(tool_name):
+            return Path(found)
         if latest_build_tool:
-            exe_name = f"{tool_name}.exe" if os.name == "nt" else tool_name
-            bat_name = f"{tool_name}.bat" if os.name == "nt" else tool_name
-            for cand in [os.path.join(latest_build_tool, exe_name), os.path.join(latest_build_tool, bat_name)]:
-                if os.path.exists(cand):
+            exts = [".exe", ".bat", ""] if os.name == "nt" else [""]
+            for ext in exts:
+                cand = latest_build_tool / f"{tool_name}{ext}"
+                if cand.exists():
                     return cand
-        return None
+        raise RuntimeError(f"未找到必要工具: {tool_name}，请配置相关环境变量。")
 
-    aapt2 = locate_tool(aapt2, "aapt2")
-    zipalign = locate_tool(zipalign, "zipalign")
-    apksigner = locate_tool(apksigner, "apksigner")
+    aapt2 = locate("AAPT2_PATH", "aapt2")
+    zipalign = locate("ZIPALIGN_PATH", "zipalign")
+    apksigner = locate("APKSIGNER_PATH", "apksigner")
 
-    if not android_jar and sdk_root and os.path.exists(os.path.join(sdk_root, "platforms")):
-        platforms_dir = os.path.join(sdk_root, "platforms")
-        platforms = sorted(os.listdir(platforms_dir), reverse=True)
-        for plat in platforms:
-            candidate = os.path.join(platforms_dir, plat, "android.jar")
-            if os.path.exists(candidate):
-                android_jar = candidate
+    # 寻找 android.jar
+    android_jar = None
+    if (jar_env := os.environ.get("ANDROID_JAR_PATH")) and Path(jar_env).exists():
+        android_jar = Path(jar_env)
+    elif sdk_path and (sdk_path / "platforms").exists():
+        platforms = sorted((sdk_path / "platforms").iterdir(), reverse=True)
+        for p in platforms:
+            cand = p / "android.jar"
+            if cand.exists():
+                android_jar = cand
                 break
 
-    if not aapt2 or not os.path.exists(aapt2):
-        raise RuntimeError("未找到 aapt2！请确认已安装 Android SDK 或手动配置 AAPT2_PATH 环境变量。")
-    if not zipalign or not os.path.exists(zipalign):
-        raise RuntimeError("未找到 zipalign！请确认已安装 Android SDK 或手动配置 ZIPALIGN_PATH 环境变量。")
-    if not apksigner or not os.path.exists(apksigner):
-        raise RuntimeError("未找到 apksigner！请确认已安装 Android SDK 或手动配置 APKSIGNER_PATH 环境变量。")
-    if not android_jar or not os.path.exists(android_jar):
-        raise RuntimeError("未找到 android.jar！请确认已安装 Android SDK 或手动配置 ANDROID_JAR_PATH 环境变量。")
+    if not android_jar:
+        raise RuntimeError("未找到 android.jar，请配置 ANDROID_JAR_PATH。")
 
     return aapt2, zipalign, apksigner, android_jar
 
+def ensure_debug_keystore() -> Path:
+    """确保 debug.keystore 存在"""
+    keystore = Path.home() / ".android" / "debug.keystore"
+    if keystore.exists():
+        return keystore
 
-# ==================== 第五步：核心逻辑函数 ====================
+    keystore.parent.mkdir(parents=True, exist_ok=True)
+    keytool = shutil.which("keytool")
+    if not keytool and os.environ.get("JAVA_HOME"):
+        cand = Path(os.environ["JAVA_HOME"]) / "bin" / ("keytool.exe" if os.name == "nt" else "keytool")
+        if cand.exists():
+            keytool = str(cand)
 
-def copy_module_template(output_dir):
-    """准备构建目录：复制 module_template 中的所有模版文件到临时构建目录"""
-    # 清理上一次的构建临时目录
-    if os.path.exists(output_dir):
-        shutil.rmtree(output_dir)
-    os.makedirs(output_dir, exist_ok=True)
+    if not keytool:
+        raise RuntimeError("缺少 keytool 且未找到 debug.keystore，无法完成签名。")
 
-    if os.path.exists(TEMPLATE_DIR):
-        print("[i] 正在复制模块模板文件...")
-        for item in os.listdir(TEMPLATE_DIR):
-            s = os.path.join(TEMPLATE_DIR, item)
-            d = os.path.join(output_dir, item)
-            if os.path.isdir(s):
-                shutil.copytree(s, d, dirs_exist_ok=True)
-            else:
-                shutil.copy2(s, d)
+    cmd = [
+        keytool, "-genkeypair", "-v",
+        "-keystore", str(keystore),
+        "-storepass", "android", "-alias", "androiddebugkey", "-keypass", "android",
+        "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000",
+        "-dname", "CN=Android Debug,O=Android,C=US"
+    ]
+    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    return keystore
 
+# ----------------- 核心构建逻辑 -----------------
 
-def generate_module_prop(output_dir):
-    """生成 module.prop 文件到目标构建目录（覆盖模版中的同名文件）"""
-    os.makedirs(output_dir, exist_ok=True)
-    target_file_path = os.path.join(output_dir, "module.prop")
-    
-    git_count = get_git_commit_count()
-    git_hash = get_git_short_hash()
-    build_time = datetime.now().strftime("%Y-%m-%d %H:%M")
-    
+def prepare_template():
+    """复制模块模板至临时构建目录"""
+    if BUILD_TMP_DIR.exists():
+        shutil.rmtree(BUILD_TMP_DIR, ignore_errors=True)
+    BUILD_TMP_DIR.mkdir(parents=True, exist_ok=True)
+
+    if TEMPLATE_DIR.exists():
+        shutil.copytree(TEMPLATE_DIR, BUILD_TMP_DIR, dirs_exist_ok=True)
+
+def generate_module_prop() -> str:
+    """生成 module.prop 文件"""
+    git_count, git_hash = get_git_info()
     version_code = os.environ.get("VERSION_CODE", git_count)
-    env_version_name = os.environ.get("VERSION_NAME")
-    
-    if env_version_name and env_version_name.strip():
-        version_name = env_version_name.strip()
-    else:
-        version_name = f"{BASE_VERSION}-{git_hash}"
-    
-    full_description = f"{MODULE_DESCRIPTION} [构建时间: {build_time}]"
-    
-    prop_lines = [
+    env_vname = os.environ.get("VERSION_NAME")
+    version_name = env_vname.strip() if env_vname and env_vname.strip() else f"{BASE_VERSION}-{git_hash}"
+
+    build_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    description = f"{MODULE_DESCRIPTION} [构建: {build_time}]"
+
+    lines = [
         f"id={MODULE_ID}",
         f"name={MODULE_NAME}",
         f"version={version_name}",
         f"versionCode={version_code}",
         f"author={MODULE_AUTHOR}",
-        f"description={full_description}"
+        f"description={description}"
     ]
-    
     if UPDATE_JSON_URL.strip():
-        prop_lines.append(f"updateJson={UPDATE_JSON_URL.strip()}")
-    
-    final_content = "\n".join(prop_lines) + "\n"
-    
-    with open(target_file_path, "w", encoding="utf-8") as f:
-        f.write(final_content)
-        
-    print(f"[✓] 成功生成 module.prop：")
-    print(f"    ├─ 目标路径: {target_file_path}")
-    print(f"    ├─ 版本名称: {version_name}")
-    print(f"    └─ 版本代码: {version_code}")
+        lines.append(f"updateJson={UPDATE_JSON_URL.strip()}")
+
+    (BUILD_TMP_DIR / "module.prop").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    print(f"[+] module.prop 生成完成 -> 版本: {version_name} ({version_code})")
     return version_name
 
-
 def build_overlay_apk():
-    """使用 aapt2 编译资源、zipalign 对齐并进行 V2 签名生成 WetypeMonet.apk"""
-    fix_java_environment()
-    aapt2_exe, zipalign_exe, apksigner_exe, android_jar = find_sdk_tools()
-    
-    print(f"[i] AAPT2 路径: {aapt2_exe}")
-    print(f"[i] ZIPALIGN 路径: {zipalign_exe}")
-    print(f"[i] APKSIGNER 路径: {apksigner_exe}")
-    print(f"[i] ANDROID_JAR 路径: {android_jar}")
+    """使用 AAPT2 编译 Overlay，对齐并进行 V2 签名"""
+    fix_java_env()
+    aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
 
-    # 目标输出位置设为 out/build_tmp/files/
-    target_apk_dir = os.path.join(BUILD_TMP_DIR, "files")
-    os.makedirs(target_apk_dir, exist_ok=True)
-    
-    compiled_zip = os.path.join(OUT_DIR, "compiled.zip")
-    unsigned_apk = os.path.join(OUT_DIR, "unsigned.apk")
-    aligned_apk = os.path.join(OUT_DIR, "aligned.apk")
-    final_apk = os.path.join(target_apk_dir, "WetypeMonet.apk")
-    
-    res_dir = os.path.join(SRC_DIR, "res")
-    manifest_xml = os.path.join(SRC_DIR, "AndroidManifest.xml")
+    target_apk_dir = BUILD_TMP_DIR / "files"
+    target_apk_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. 资源编译 (aapt2 compile)
-    print("[1/4] 正在编译资源 (aapt2 compile)...")
-    compile_cmd = [
-        aapt2_exe, "compile",
-        "--dir", res_dir,
-        "-o", compiled_zip
-    ]
-    res_compile = subprocess.run(compile_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
-    if res_compile.returncode != 0:
-        print("\n[!] aapt2 compile 编译错误：")
-        print(res_compile.stderr or res_compile.stdout)
-        raise RuntimeError("aapt2 compile 失败")
+    compiled_zip = OUT_DIR / "compiled.zip"
+    unsigned_apk = OUT_DIR / "unsigned.apk"
+    aligned_apk = OUT_DIR / "aligned.apk"
+    final_apk = target_apk_dir / "WetypeMonet.apk"
 
-    # 2. 资源链接 (aapt2 link)
-    print("[2/4] 正在链接生成 Unsigned APK (aapt2 link)...")
+    res_dir = SRC_DIR / "res"
+    manifest_xml = SRC_DIR / "AndroidManifest.xml"
+
+    # 1. Compile
+    print("[1/4] 编译资源 (aapt2 compile)...")
+    res = subprocess.run([str(aapt2), "compile", "--dir", str(res_dir), "-o", str(compiled_zip)], 
+                         capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    if res.returncode != 0:
+        raise RuntimeError(f"aapt2 compile 失败:\n{res.stderr or res.stdout}")
+
+    # 2. Link
+    print("[2/4] 链接 APK (aapt2 link)...")
     link_cmd = [
-        aapt2_exe, "link",
-        "-I", android_jar,
-        "--manifest", manifest_xml,
-        "-o", unsigned_apk,
-        compiled_zip,
+        str(aapt2), "link",
+        "-I", str(android_jar),
+        "--manifest", str(manifest_xml),
+        "-o", str(unsigned_apk),
+        str(compiled_zip),
         "--auto-add-overlay",
         "--min-sdk-version", "26",
         "--target-sdk-version", "35"
     ]
-    res_link = subprocess.run(link_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
-    if res_link.returncode != 0:
-        print("\n" + "=" * 50)
-        print("[!] AAPT2 Link 详细报错信息如下：")
-        print("=" * 50)
-        print(res_link.stderr or res_link.stdout)
-        print("=" * 50 + "\n")
-        raise RuntimeError("aapt2 link 失败，请检查上方具体的 AAPT2 报错提示。")
+    res = subprocess.run(link_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    if res.returncode != 0:
+        raise RuntimeError(f"aapt2 link 失败:\n{res.stderr or res.stdout}")
 
-    # 3. 4 字节对齐 (zipalign)
-    print("[3/4] 正在进行 4 字节对齐 (zipalign)...")
-    if os.path.exists(aligned_apk):
-        os.remove(aligned_apk)
-    align_cmd = [zipalign_exe, "-p", "-f", "4", unsigned_apk, aligned_apk]
-    subprocess.run(align_cmd, check=True)
+    # 3. Zipalign
+    print("[3/4] 4 字节对齐 (zipalign)...")
+    if aligned_apk.exists():
+        aligned_apk.unlink()
+    subprocess.run([str(zipalign), "-p", "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
 
-    # 4. APK 签名 (仅使用 V2 签名，使用固定 debug.keystore，禁用 V4 签名以阻止生成 .idsig)
-    print("[4/4] 正在使用 Debug Key 进行 V2 签名 (apksigner)...")
+    # 4. Sign (V2 only)
+    print("[4/4] 使用 Debug Key 进行 V2 签名 (apksigner)...")
     keystore = ensure_debug_keystore()
-    if os.path.exists(final_apk):
-        os.remove(final_apk)
+    if final_apk.exists():
+        final_apk.unlink()
 
     sign_cmd = [
-        apksigner_exe, "sign",
-        "--ks", keystore,
+        str(apksigner), "sign",
+        "--ks", str(keystore),
         "--ks-pass", "pass:android",
         "--key-pass", "pass:android",
         "--ks-key-alias", "androiddebugkey",
@@ -332,65 +226,46 @@ def build_overlay_apk():
         "--v2-signing-enabled", "true",
         "--v3-signing-enabled", "false",
         "--v4-signing-enabled", "false",
-        "--out", final_apk,
-        aligned_apk
+        "--out", str(final_apk),
+        str(aligned_apk)
     ]
     subprocess.run(sign_cmd, check=True)
 
-    # 5. 清理编译中间临时文件
-    for temp_file in [compiled_zip, unsigned_apk, aligned_apk]:
-        if os.path.exists(temp_file):
-            os.remove(temp_file)
+    # 5. 清理编译中间文件
+    for tmp in [compiled_zip, unsigned_apk, aligned_apk, Path(f"{final_apk}.idsig")]:
+        if tmp.exists():
+            tmp.unlink()
 
-    # 清理可能产生的 .idsig 文件
-    idsig_file = f"{final_apk}.idsig"
-    if os.path.exists(idsig_file):
-        os.remove(idsig_file)
+    print(f"[+] Overlay APK 生成成功: {final_apk}")
 
-    print(f"[✓] Overlay APK 编译并成功完成 V2 签名: {final_apk}")
-
-
-def create_module_zip(version_name):
-    """将 BUILD_TMP_DIR 内的所有内容打包为标准的 Magisk/KernelSU 模块 ZIP 刷机包"""
-    print("\n[i] 正在打包模块 Zip 文件...")
-    os.makedirs(OUT_DIR, exist_ok=True)
-    
+def create_module_zip(version_name: str):
+    """把 BUILD_TMP_DIR 内容打包为标准的刷机 ZIP 包"""
+    print("[*] 正在打包模块 ZIP 文件...")
     zip_filename = f"{MODULE_ID}_{version_name}.zip"
-    zip_path = os.path.join(OUT_DIR, zip_filename)
+    zip_path = OUT_DIR / zip_filename
 
-    if os.path.exists(zip_path):
-        os.remove(zip_path)
+    if zip_path.exists():
+        zip_path.unlink()
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
-        for root, _, files in os.walk(BUILD_TMP_DIR):
-            for file in files:
-                abs_file_path = os.path.join(root, file)
-                # 计算相对路径，使解压根目录即为模块根目录
-                rel_path = os.path.relpath(abs_file_path, BUILD_TMP_DIR)
-                zf.write(abs_file_path, rel_path)
+        for file_path in BUILD_TMP_DIR.rglob("*"):
+            if file_path.is_file():
+                # 保持相对路径归档，解压直接为模块根目录
+                arcname = file_path.relative_to(BUILD_TMP_DIR)
+                zf.write(file_path, arcname)
 
-    print(f"[✓] 模块 ZIP 包制作完成：")
-    print(f"    └─ 输出路径: {zip_path}")
+    print(f"[+] 刷机包制作成功: {zip_path}")
 
-
-# ==================== 执行入口 ====================
+# ----------------- 执行入口 -----------------
 
 if __name__ == "__main__":
     try:
-        print("=== 开始执行构建流程 ===")
-        
-        # 1. 初始化 build_tmp 并复制 module_template 框架文件
-        copy_module_template(BUILD_TMP_DIR)
-        
-        # 2. 生成 module.prop 到 out/build_tmp/
-        version_name = generate_module_prop(BUILD_TMP_DIR)
-        
-        # 3. 编译资源并签名生成 WetypeMonet.apk 到 out/build_tmp/files/
+        print("=== 开始构建 Magisk / KernelSU Overlay 模块 ===")
+        prepare_template()
+        version_name = generate_module_prop()
         build_overlay_apk()
-        
-        # 4. 将 out/build_tmp 整体打包为 ZIP 刷机包
         create_module_zip(version_name)
-        
-        print("\n[✓] 所有构建与打包步骤已顺利完成！\n")
+        print("=== 构建完全成功！===\n")
     except Exception as e:
         print(f"\n[!] 构建失败: {e}")
+        sys.exit(1)
