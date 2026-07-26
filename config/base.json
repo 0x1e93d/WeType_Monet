@@ -510,7 +510,7 @@
     ],
     "theme_drawables": [
         {
-            "key": "ime_logo_green ",
+            "key": "ime_logo_green",
             "file_path": "src/drawable/ime_logo_green.xml",
             "description": "工具栏 Logo 绿色"
         },

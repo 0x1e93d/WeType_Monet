@@ -22,6 +22,7 @@ import urllib.request
 import zipfile
 from datetime import datetime
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 # ==============================================================================
 # 1. 常量与路径配置
@@ -39,8 +40,9 @@ TEMPLATE_DIR = PROJECT_ROOT / "module_template"
 DECOMPILE_DIR = OUT_DIR / "decompiled_apk"
 
 # 关键文件
-BASE_COLORS_PATH = CONFIG_DIR / "base_colors.json"
+BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
+HLD_PACKAGE_PATH = Path("com/tencent/wetype/plugin/hld")
 
 # 远程源
 APK_URL = "https://z.weixin.qq.com/android/download?channel=latest"
@@ -176,7 +178,7 @@ def calculate_sha256(file_path: Path) -> str:
 
 def get_latest_sha256() -> tuple[str | None, str | None]:
     """获取 config 目录下历史记录中最新的 JSON SHA256"""
-    json_files = [f for f in CONFIG_DIR.glob("*.json") if f.name != "base_colors.json"]
+    json_files = [f for f in CONFIG_DIR.glob("*.json") if f.name != BASE_CONFIG_PATH.name]
     if not json_files:
         return None, None
     latest_file = max(json_files, key=lambda f: f.stat().st_mtime)
@@ -260,223 +262,192 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
     return new_sha256, apk_code, final_apk_name, release_date, final_changelog
 
 # ==============================================================================
-# 4. 阶段二：解析 public.xml & Smali 并精准生成映射 (已修复空键问题)
+# 4. 阶段二：限定 hld 根目录的资源映射
 # ==============================================================================
 
-def parse_public_xml_color_mappings() -> dict[str, str]:
-    """解析 res/values/public.xml，返回规范化的 ID (小写 0x7f...) -> 原始 Resource_Name 的映射"""
-    id_to_unobfuscated = {}
-    public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
-    if public_xml.exists():
-        with open(public_xml, "r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                match = re.search(r'<public\s+type="color"\s+name="([^"]+)"\s+id="(0x7f[0-9a-fA-F]{6})"', line)
-                if match:
-                    res_name, res_id = match.group(1), match.group(2).lower()
-                    id_to_unobfuscated[res_id] = res_name
-    print(f"[+] public.xml 解析完成，获取 {len(id_to_unobfuscated)} 个颜色资源 ID 定义")
-    return id_to_unobfuscated
+def iter_hld_root_smali_files():
+    """仅返回各 Smali 分包中 hld 根目录的直接类文件。"""
+    for smali_dir in DECOMPILE_DIR.glob("smali*"):
+        hld_dir = smali_dir / HLD_PACKAGE_PATH
+        if hld_dir.is_dir():
+            yield from (path for path in hld_dir.glob("*.smali") if path.is_file())
 
-def parse_smali_color_mappings() -> dict[str, str]:
-    """
-    遍历全局 Smali，提取 0x7f... ID 到 Smali 字段名的映射关系。
-    返回字典: { 规范化 Resource_ID (0x7f... 小写) : Smali_Field_Name }
-    """
-    id_to_obfuscated = {}
-    
-    # 支持两种模式：静态直接内联 与 静态块赋值
-    field_inline_pattern = re.compile(
-        r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE
+
+def parse_hld_key_to_id() -> dict[str, str]:
+    """从 hld 根目录的类字段中提取未混淆 key 到资源 ID 的映射。"""
+    field_pattern = re.compile(
+        r"\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})",
+        re.IGNORECASE,
     )
-    const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
-    sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
+    const_pattern = re.compile(r"const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})", re.IGNORECASE)
+    sput_pattern = re.compile(r"sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I")
+    key_to_id: dict[str, str] = {}
+    scanned_files = 0
 
-    smali_dirs = list(DECOMPILE_DIR.glob("smali*"))
-    for smali_dir in smali_dirs:
-        # 优先检索可能包含 R$color 的类文件，找不到则扫描全量 Smali
-        r_color_files = list(smali_dir.rglob("*R$color*.smali"))
-        files_to_scan = r_color_files if r_color_files else list(smali_dir.rglob("*.smali"))
+    for smali_file in iter_hld_root_smali_files():
+        scanned_files += 1
+        content = smali_file.read_text(encoding="utf-8", errors="ignore")
+        for match in field_pattern.finditer(content):
+            key_to_id[match.group(1)] = match.group(2).lower()
 
-        for smali_file in files_to_scan:
-            if not smali_file.is_file():
+        last_const_id = None
+        for line in content.splitlines():
+            const_match = const_pattern.search(line)
+            if const_match:
+                last_const_id = const_match.group(1).lower()
                 continue
-            with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-                
-                # 模式 1: 直接内联声明匹配
-                for match in field_inline_pattern.finditer(content):
-                    field_name, res_id = match.group(1), match.group(2).lower()
-                    id_to_obfuscated[res_id] = field_name
-
-                # 模式 2: <clinit> 异步常量传值匹配
-                lines = content.splitlines()
+            sput_match = sput_pattern.search(line)
+            if sput_match and last_const_id:
+                key_to_id[sput_match.group(1)] = last_const_id
                 last_const_id = None
-                for line in lines:
-                    c_match = const_pattern.search(line)
-                    if c_match:
-                        last_const_id = c_match.group(1).lower()
-                        continue
-                    s_match = sput_pattern.search(line)
-                    if s_match and last_const_id:
-                        field_name = s_match.group(1)
-                        id_to_obfuscated[last_const_id] = field_name
-                        last_const_id = None
 
-    print(f"[+] Smali 扫描完成，获取 {len(id_to_obfuscated)} 项 ID -> 混淆 Field 映射关系")
-    return id_to_obfuscated
+    print(f"[+] hld 根目录扫描完成: {scanned_files} 个类文件，{len(key_to_id)} 组 Key -> ID 映射")
+    return key_to_id
+
+
+def parse_public_xml_mappings(resource_type: str) -> dict[str, str]:
+    """返回指定资源类型的 ID 到混淆资源名映射。"""
+    public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
+    if not public_xml.exists():
+        raise FileNotFoundError(f"[!] 找不到 public.xml: {public_xml}")
+
+    pattern = re.compile(
+        rf'<public\s+type="{re.escape(resource_type)}"\s+name="([^"]+)"\s+id="(0x7f[0-9a-fA-F]{{6}})"'
+    )
+    id_to_name: dict[str, str] = {}
+    for line in public_xml.read_text(encoding="utf-8", errors="ignore").splitlines():
+        match = pattern.search(line)
+        if match:
+            id_to_name[match.group(2).lower()] = match.group(1)
+    return id_to_name
+
+
+def resolve_theme_resources(
+    items: list[dict], resource_type: str, key_to_id: dict[str, str], *, require_mapping: bool
+) -> list[dict]:
+    """使用 hld 字段 ID 和同类型 public.xml 生成资源映射结果。"""
+    id_to_obfuscated = parse_public_xml_mappings(resource_type)
+    resolved: list[dict] = []
+
+    for item in items:
+        raw_key = (item.get("key") or item.get("unobfuscated_key") or "").strip()
+        if not raw_key:
+            message = f"[!] {resource_type} 配置存在空 key"
+            if require_mapping:
+                raise ValueError(message)
+            print(f"[!] 警告: {message}，已跳过")
+            continue
+
+        resource_id = key_to_id.get(raw_key)
+        obfuscated_key = id_to_obfuscated.get(resource_id, "") if resource_id else ""
+        if not obfuscated_key:
+            message = f"{resource_type} '{raw_key}' 未在 hld 根目录映射到目标资源"
+            if require_mapping:
+                raise RuntimeError(f"[!] {message}")
+            print(f"[!] 警告: {message}，已跳过")
+            continue
+
+        resolved_item = {
+            "unobfuscated_key": raw_key,
+            "obfuscated_key": obfuscated_key,
+            "description": item.get("description", ""),
+        }
+        if resource_type == "color":
+            for field in ("light", "night"):
+                if item.get(field):
+                    resolved_item[field] = item[field]
+        elif resource_type == "string":
+            resolved_item["value"] = item.get("value", "")
+        else:
+            file_path = item.get("file_path", "")
+            if not file_path:
+                raise ValueError(f"[!] drawable '{raw_key}' 缺少 file_path")
+            resolved_item["file_path"] = file_path
+        resolved.append(resolved_item)
+
+    print(f"[+] {resource_type} 映射完成: {len(resolved)}/{len(items)} 项")
+    return resolved
+
 
 def generate_version_config(
     sha256_str: str, apk_code: str, apk_name: str, release_date: str, changelog: list[str]
 ) -> Path:
-    if not BASE_COLORS_PATH.exists():
-        raise FileNotFoundError(f"[!] 找不到基础颜色模板: {BASE_COLORS_PATH}")
+    if not BASE_CONFIG_PATH.exists():
+        raise FileNotFoundError(f"[!] 找不到基础配置文件: {BASE_CONFIG_PATH}")
 
-    # 1. 提取 public.xml: ID (0x7f060001) -> 混淆后的 Resource Name (a_a_a)
-    id_to_obfuscated_name = parse_public_xml_color_mappings()
+    base_config = json.loads(BASE_CONFIG_PATH.read_text(encoding="utf-8"))
+    key_to_id = parse_hld_key_to_id()
+    updated_colors = resolve_theme_resources(base_config.get("theme_colors", []), "color", key_to_id, require_mapping=False)
+    updated_strings = resolve_theme_resources(base_config.get("theme_strings", []), "string", key_to_id, require_mapping=False)
+    updated_drawables = resolve_theme_resources(base_config.get("theme_drawables", []), "drawable", key_to_id, require_mapping=True)
 
-    # 2. 提取 Smali: Key 字段名 ("White") -> ID (0x7f060001)
-    # 建立反向表：从 Smali 中的 Field 名字找 ID
-    key_to_id = {}
-    
-    field_pattern = re.compile(
-        r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE
-    )
-    const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
-    sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
-
-    smali_dirs = list(DECOMPILE_DIR.glob("smali*"))
-    for smali_dir in smali_dirs:
-        for smali_file in smali_dir.rglob("*.smali"):
-            if not smali_file.is_file():
-                continue
-            with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-                
-                # 模式 1: 直接内联声明 .field public static final White:I = 0x7f060001
-                for match in field_pattern.finditer(content):
-                    field_name, res_id = match.group(1), match.group(2).lower()
-                    key_to_id[field_name] = res_id
-
-                # 模式 2: <clinit> 赋指
-                lines = content.splitlines()
-                last_const_id = None
-                for line in lines:
-                    c_match = const_pattern.search(line)
-                    if c_match:
-                        last_const_id = c_match.group(1).lower()
-                        continue
-                    s_match = sput_pattern.search(line)
-                    if s_match and last_const_id:
-                        field_name = s_match.group(1)
-                        key_to_id[field_name] = last_const_id
-                        last_const_id = None
-
-    print(f"[+] Smali 反查表建立完成，共抓取 {len(key_to_id)} 组 Key -> ID 映射")
-
-    # 3. 读取 base_colors.json
-    with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
-        base_colors = json.load(f).get("theme_colors", [])
-
-    updated_colors = []
-
-    # 4. 遍历 base_colors，通过 Smali 得到的 ID 反查 public.xml 中的混淆 name
-    for item in base_colors:
-        raw_key = item.get("unobfuscated_key") or item.get("key") or ""
-        if not raw_key:
-            continue
-
-        # 步骤 A: 从 Smali 中根据 raw_key 找到对应的 Resource ID
-        res_id = key_to_id.get(raw_key)
-
-        obf_name = ""
-        if res_id:
-            # 步骤 B: 拿着 ID 去 public.xml 映射表反查混淆后的 Resource Name
-            obf_name = id_to_obfuscated_name.get(res_id, "")
-
-        # 如果 Smali/public.xml 均没查到混淆名字，回退原始 key
-        final_obf_key = obf_name if obf_name else raw_key
-
-        updated_colors.append({
-            "unobfuscated_key": raw_key,
-            "obfuscated_key": final_obf_key,
-            "light": item.get("light"),
-            "night": item.get("night"),
-            "description": item.get("description", "")
-        })
-
-    # 5. 生成版本 JSON 配置文件
-    safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_name)
-    safe_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_code)
+    safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
+    safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
     filename = f"{safe_name}({safe_code}).json" if safe_code else f"{safe_name}.json"
-
-    raw_payload = {
+    payload = {
         "version_name": apk_name,
         "version_code": apk_code,
         "release_date": release_date,
         "sha256": sha256_str,
         "changelog": changelog,
-        "theme_colors": updated_colors
+        "theme_colors": updated_colors,
+        "theme_strings": updated_strings,
+        "theme_drawables": updated_drawables,
     }
 
     config_path = CONFIG_DIR / filename
     out_path = OUT_DIR / filename
-
-    with open(config_path, "w", encoding="utf-8") as f:
-        json.dump({k: v for k, v in raw_payload.items() if v not in (None, "", [])}, f, ensure_ascii=False, indent=4)
+    config_path.write_text(json.dumps(payload, ensure_ascii=False, indent=4) + "\n", encoding="utf-8")
     shutil.copy2(config_path, out_path)
-
     print(f"[+] 版本 JSON 配置文件生成完毕: {config_path}")
     return config_path
 
 # ==============================================================================
-# 5. 阶段三：生成 colors.xml 并编译 Overlay
+# 5. 阶段三：生成 Overlay 资源
 # ==============================================================================
 
-def sync_src_colors_xml(config_file: Path):
-    """根据生成的版本 JSON 配置文件更新 Overlay 的 colors.xml 资源文件"""
-    with open(config_file, "r", encoding="utf-8") as f:
-        theme_colors = json.load(f).get("theme_colors", [])
+def write_xml_resource_file(path: Path, entries: list[str]):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>', *entries, '</resources>', '']
+    path.write_text("\n".join(lines), encoding="utf-8")
 
+
+def sync_src_resources(config_file: Path):
+    """将版本配置转换为 colors、strings 和改名后的 Drawable 资源。"""
+    config_data = json.loads(config_file.read_text(encoding="utf-8"))
     res_dir = SRC_DIR / "res"
-    values_day_dir = res_dir / "values"
-    values_night_dir = res_dir / "values-night"
+    day_entries: list[str] = []
+    night_entries: list[str] = []
+    string_entries: list[str] = []
 
-    values_day_dir.mkdir(parents=True, exist_ok=True)
-    values_night_dir.mkdir(parents=True, exist_ok=True)
+    for item in config_data.get("theme_colors", []):
+        target_key = item["obfuscated_key"]
+        if light_color := item.get("light"):
+            day_entries.append(f'    <color name="{target_key}">{escape(light_color)}</color>')
+        if night_color := item.get("night"):
+            night_entries.append(f'    <color name="{target_key}">{escape(night_color)}</color>')
 
-    day_xml_lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
-    night_xml_lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
+    for item in config_data.get("theme_strings", []):
+        target_key = item["obfuscated_key"]
+        string_entries.append(f'    <string name="{target_key}">{escape(item.get("value", ""))}</string>')
 
-    for item in theme_colors:
-        # 核心逻辑修复：强制优先读取混淆后的 Key (obfuscated_key)
-        # 只有在 obfuscated_key 为空或不存在时，才回退 unobfuscated_key
-        obf_key = item.get("obfuscated_key", "").strip()
-        unobf_key = item.get("unobfuscated_key", "").strip()
-        
-        target_key = obf_key if obf_key else unobf_key
+    write_xml_resource_file(res_dir / "values" / "colors.xml", day_entries)
+    write_xml_resource_file(res_dir / "values-night" / "colors.xml", night_entries)
+    write_xml_resource_file(res_dir / "values" / "strings.xml", string_entries)
 
-        if not target_key:
-            continue
+    drawable_dir = res_dir / "drawable"
+    drawable_dir.mkdir(parents=True, exist_ok=True)
+    for item in config_data.get("theme_drawables", []):
+        raw_key = item["unobfuscated_key"]
+        source_path = PROJECT_ROOT / item["file_path"]
+        if not source_path.is_file():
+            raise FileNotFoundError(f"[!] drawable '{raw_key}' 的源文件不存在: {source_path}")
+        if not source_path.suffix:
+            raise ValueError(f"[!] drawable '{raw_key}' 的源文件没有扩展名: {source_path}")
+        destination = drawable_dir / f"{item['obfuscated_key']}{source_path.suffix.lower()}"
+        shutil.copy2(source_path, destination)
 
-        light_color = item.get("light")
-        if light_color:
-            day_xml_lines.append(f'    <color name="{target_key}">{light_color}</color>')
-
-        night_color = item.get("night")
-        if night_color:
-            night_xml_lines.append(f'    <color name="{target_key}">{night_color}</color>')
-
-    day_xml_lines.append('</resources>\n')
-    night_xml_lines.append('</resources>\n')
-
-    day_path = values_day_dir / "colors.xml"
-    night_path = values_night_dir / "colors.xml"
-
-    day_path.write_text("\n".join(day_xml_lines), encoding="utf-8")
-    night_path.write_text("\n".join(night_xml_lines), encoding="utf-8")
-
-    print(f"[+] 成功写入混淆 Key 至日间模式色彩文件: {day_path}")
-    print(f"[+] 成功写入混淆 Key 至夜间模式色彩文件: {night_path}")
+    print(f"[+] Overlay 资源已同步至: {res_dir}")
 
 def build_overlay_apk():
     """编译并签名 Overlay APK"""
@@ -630,9 +601,9 @@ def main():
         print("\n[+] ===== 阶段 2: 解析 ID 映射 & 生成配置 =====")
         config_path = generate_version_config(sha256_str, apk_code, apk_name, release_date, changelog)
 
-        # Phase 3: 准备双模式 XML 资源 & 编译 Overlay
-        print("\n[+] ===== 阶段 3: 补全 values/values-night & 编译签名 Overlay APK =====")
-        sync_src_colors_xml(config_path)
+        # Phase 3: 准备资源 & 编译 Overlay
+        print("\n[+] ===== 阶段 3: 生成 Overlay 资源并编译签名 APK =====")
+        sync_src_resources(config_path)
         prepare_template()
         built_vname = generate_module_prop(apk_name, apk_code)
         build_overlay_apk()
