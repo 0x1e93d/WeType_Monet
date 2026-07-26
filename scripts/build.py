@@ -328,51 +328,48 @@ def parse_smali_color_mappings() -> dict[str, str]:
 def generate_version_config(
     sha256_str: str, apk_code: str, apk_name: str, release_date: str, changelog: list[str]
 ) -> Path:
-    """对比并生成版本映射配置，修复填充逻辑"""
+    """根据 base_colors.json 模板生成当前版本的 JSON 映射配置"""
     if not BASE_COLORS_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础颜色模板: {BASE_COLORS_PATH}")
 
-    # 1. 解析字典（强制所有 ID 统一为小写格式）
-    id_to_obfuscated = parse_smali_color_mappings()        # "0x7f060001" -> "a_a_a"
-    id_to_unobfuscated = parse_public_xml_color_mappings()  # "0x7f060001" -> "White"
+    # 1. 提取 Smali 混淆映射 (0x7f060001 -> "a_a_a") 与 public.xml 定义 (0x7f060001 -> "a_a_a" 或 "White")
+    id_to_obfuscated = parse_smali_color_mappings()
+    id_to_unobfuscated = parse_public_xml_color_mappings()
 
-    # 2. 建立反查表: raw_key ("White") -> "0x7f060001"
+    # 2. 构建 Resource ID 的反向索引表
     unobf_name_to_id = {v: k for k, v in id_to_unobfuscated.items()}
 
     with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
         base_colors = json.load(f).get("theme_colors", [])
 
     updated_colors = []
-    missing_keys = []
 
     for item in base_colors:
-        raw_key = item.get("unobfuscated_key") or item.get("key")  # 兼容 Key 名写法
-        
-        # 通过未混淆 Key 名反查 ID
+        # 获取原始未混淆 Key（兼容 "unobfuscated_key" 或 "key" 字段）
+        raw_key = item.get("unobfuscated_key") or item.get("key") or ""
+        if not raw_key:
+            continue
+
+        # 尝试通过 public.xml 反查 Resource ID
         res_id = unobf_name_to_id.get(raw_key)
         
         obf_key = ""
         if res_id:
-            # 优先从 Smali 混淆映射中查出混淆后的字段名
+            # 若 public.xml 中找到了该 ID，则去 Smali 查混淆名
             obf_key = id_to_obfuscated.get(res_id, "")
-        
-        # 修复关键点：如果找到了混淆 Key，则使用混淆 Key；如果未找到混淆 Key 但查到了 ID，回退使用原始 Key
-        if not obf_key:
-            if res_id:
-                obf_key = raw_key
-            else:
-                missing_keys.append(raw_key)
+
+        # 核心修复点：
+        # 如果从 Smali/public 中没有查到混淆字段名（比如 public.xml 名字没对上），
+        # 则直接把原始 raw_key 作为匹配结果，绝不清空！
+        final_obf_key = obf_key if obf_key else raw_key
 
         updated_colors.append({
             "unobfuscated_key": raw_key,
-            "obfuscated_key": obf_key,
+            "obfuscated_key": final_obf_key,
             "light": item.get("light"),
             "night": item.get("night"),
             "description": item.get("description", "")
         })
-
-    if missing_keys:
-        print(f"[!] 警告: 共 {len(missing_keys)} 个 Key 未能在 public.xml 中找到对应 Resource ID: {missing_keys}")
 
     safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_code)
@@ -399,7 +396,7 @@ def generate_version_config(
         json.dump(json_payload, f, ensure_ascii=False, indent=4)
     shutil.copy2(config_path, out_path)
 
-    print(f"[+] 配置生成完毕:\n    - Config: {config_path}\n    - Out: {out_path}")
+    print(f"[+] 配置生成完毕，共写入 {len(updated_colors)} 个 Key 节点")
     return config_path
 
 # ==============================================================================
