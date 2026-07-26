@@ -2,28 +2,32 @@ name: Auto Update & Build KSU Module
 
 on:
 #   schedule:
-    # 每天定时检查更新 (UTC 时间 0:00，即北京时间 8:00)
-    # 注意：cron 表达式必须用单引号包裹
-    # - cron: '0 0 * * *'
+#     # 每天定时检查更新 (UTC 时间 0:00，即北京时间 8:00)
+#     - cron: '0 0 * * *'
   workflow_dispatch: # 支持手动触发
+
+permissions:
+  contents: write # 赋予写入权限
 
 jobs:
   update-and-build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: 检出代码
+      - name: 检出仓库代码
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # 完整拉取 Commit 历史，确保 build.py 能够正确计算 versionCode
 
       - name: 设置 Python 环境
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.x'
 
-      - name: 设置 Java 环境 (Apktool 依赖)
+      - name: 设置 Java 环境 (JDK 17)
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
+          distribution: 'temurin'
           java-version: '17'
 
       - name: 安装系统依赖与 Python 库
@@ -35,10 +39,10 @@ jobs:
       - name: 运行 update.py 自动检测更新与构建
         id: run_update
         run: |
-          # 运行升级脚本，该脚本内部会在更新时自动调用 build.py
-          python3 scripts/update_overlay.py
+          # 执行 update.py，内部会自动解析、生成 config/3.5.2（105020）.json 并触发 build.py
+          python3 scripts/update.py
           
-          # 查找 config/ 下除了 base_colors.json 外最新生成的 JSON 文件
+          # 查找 config/ 下最新生成的 JSON 文件 (排除 base_colors.json)
           LATEST_JSON=$(ls -t config/*.json 2>/dev/null | grep -v "base_colors.json" | head -n 1 || true)
           
           if [ -n "$LATEST_JSON" ]; then
@@ -47,48 +51,36 @@ jobs:
             echo "HAS_UPDATE=true" >> $GITHUB_ENV
           else
             echo "HAS_UPDATE=false" >> $GITHUB_ENV
-            echo "未发现新版本的配置文件，可能未检测到版本更新。"
+            echo "未检测到版本更新或未生成配置文件。"
           fi
 
-      - name: 读取模块信息 (确定 Zip 名称)
+      - name: 自动定位 build.py 在 out/ 目录下打出的 Zip 模块
         if: env.HAS_UPDATE == 'true'
         run: |
-          if [ -f "module.prop" ]; then
-            MODULE_ID=$(grep -E "^id=" module.prop | cut -d'=' -f2 | tr -d '\r')
-            VERSION=$(grep -E "^version=" module.prop | cut -d'=' -f2 | tr -d '\r')
+          # 从 out/ 目录下查找最新生成的 .zip 模块
+          BUILT_ZIP=$(ls -t out/*.zip 2>/dev/null | head -n 1 || true)
+          
+          if [ -n "$BUILT_ZIP" ]; then
+            echo "ACTUAL_ZIP_PATH=${BUILT_ZIP}" >> $GITHUB_ENV
+            echo "ACTUAL_ZIP_NAME=$(basename "${BUILT_ZIP}")" >> $GITHUB_ENV
+            echo "成功找到构建产物: ${BUILT_ZIP}"
           else
-            MODULE_ID="WeType_Overlay"
-            VERSION="latest"
+            echo "ERROR: out/ 目录下未找到任何 .zip 模块产物，请检查 build.py 执行日志！"
+            exit 1
           fi
-          echo "ZIP_NAME=${MODULE_ID}_${VERSION}.zip" >> $GITHUB_ENV
 
-      - name: 自动定位打好的 KernelSU 模块压缩包 (.zip)
-        if: env.HAS_UPDATE == 'true'
-        run: |
-            # 自动在根目录下查找最新生成的 .zip 模块文件（排除可能存在的临时 zip）
-            BUILT_ZIP=$(ls -t *.zip 2>/dev/null | head -n 1 || true)
-            
-            if [ -n "$BUILT_ZIP" ]; then
-                echo "ACTUAL_ZIP_PATH=${BUILT_ZIP}" >> $GITHUB_ENV
-                echo "找到打包产物: ${BUILT_ZIP}"
-            else
-                echo "ERROR: 根目录下未找到任何 .zip 模块产物！"
-                exit 1
-            fi
-
-      - name: 上传产物 1：版本 JSON 文件
+      - name: 上传产物 1：生成的版本 JSON 文件
         if: env.HAS_UPDATE == 'true'
         uses: actions/upload-artifact@v4
         with:
-            name: ${{ env.JSON_FILENAME }}
-            path: ${{ env.JSON_PATH }}
-            if-no-files-found: error
+          name: ${{ env.JSON_FILENAME }}
+          path: ${{ env.JSON_PATH }}
+          if-no-files-found: error
 
       - name: 上传产物 2：KernelSU 模块压缩包 (.zip)
         if: env.HAS_UPDATE == 'true'
         uses: actions/upload-artifact@v4
         with:
-            # 直接使用构建出来的真实 zip 文件名作为 Artifact 名称
-            name: ${{ env.ACTUAL_ZIP_PATH }}
-            path: ${{ env.ACTUAL_ZIP_PATH }}
-            if-no-files-found: error
+          name: ${{ env.ACTUAL_ZIP_NAME }}
+          path: ${{ env.ACTUAL_ZIP_PATH }}
+          if-no-files-found: error
