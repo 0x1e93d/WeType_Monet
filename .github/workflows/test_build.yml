@@ -38,8 +38,9 @@ jobs:
 
       - name: Install Dependencies & Tools
         run: |
+          # 仅安装 apktool 和 zipalign 等，不再从 apt 安装旧版 aapt
           sudo apt-get update
-          sudo apt-get install -y zipalign apksigner aapt wget
+          sudo apt-get install -y zipalign apksigner wget
           
           # 安装 apktool
           APKTOOL_VER="2.9.3"

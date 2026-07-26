@@ -73,58 +73,72 @@ def get_git_info() -> tuple[str, str]:
     except Exception:
         return "1", "dev"
 
-def find_linux_sdk_tools() -> tuple[Path, Path, Path, Path]:
-    """定位 Linux 容器内的 Android SDK 工具链 (aapt2, zipalign, apksigner, android.jar)"""
-    sdk_root = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT") or "/usr/lib/android-sdk"
-    sdk_path = Path(sdk_root)
+def find_sdk_tools() -> tuple[str, str, str, str]:
+    """
+    自动查找 aapt2, zipalign, apksigner 与 android.jar 路径
+    兼容 Windows 本地环境与 GitHub Actions (Ubuntu / macOS / Windows) 环境
+    """
+    aapt2 = os.environ.get("AAPT2_PATH")
+    zipalign = os.environ.get("ZIPALIGN_PATH")
+    apksigner = os.environ.get("APKSIGNER_PATH")
+    android_jar = os.environ.get("ANDROID_JAR_PATH")
 
-    def locate_tool(env_var: str, tool_name: str) -> Path:
-        if (env_val := os.environ.get(env_var)) and Path(env_val).exists():
-            return Path(env_val)
-        if found := shutil.which(tool_name):
-            return Path(found)
-        if sdk_path.exists() and (sdk_path / "build-tools").exists():
-            bt_dirs = sorted((sdk_path / "build-tools").iterdir(), reverse=True)
-            for bt in bt_dirs:
-                cand = bt / tool_name
-                if cand.exists():
-                    return cand
-        raise RuntimeError(f"[!] 找不到必要构建工具: {tool_name}，请检查 Actions 环境依赖。")
+    sdk_root = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+    if not sdk_root and os.name == "nt":
+        local_appdata = os.environ.get("LOCALAPPDATA", "")
+        if local_appdata:
+            sdk_root = os.path.join(local_appdata, "Android", "Sdk")
 
-    aapt2 = locate_tool("AAPT2_PATH", "aapt2")
-    zipalign = locate_tool("ZIPALIGN_PATH", "zipalign")
-    apksigner = locate_tool("APKSIGNER_PATH", "apksigner")
+    build_tools_dir = os.path.join(sdk_root, "build-tools") if sdk_root and os.path.exists(os.path.join(sdk_root, "build-tools")) else None
+    latest_build_tool = None
+    if build_tools_dir:
+        versions = sorted(os.listdir(build_tools_dir), reverse=True)
+        if versions:
+            latest_build_tool = os.path.join(build_tools_dir, versions[0])
 
-    # 定位 android.jar，防踩坑：过滤掉预览版或大于 35 的不兼容 platform 目录
-    android_jar = None
-    if (jar_env := os.environ.get("ANDROID_JAR_PATH")) and Path(jar_env).exists():
-        android_jar = Path(jar_env)
-    elif sdk_path.exists() and (sdk_path / "platforms").exists():
-        # 筛选合法且稳定的 android-XX 平台，优先选 35/34 等稳定版 API
-        candidate_platforms = []
-        for p in (sdk_path / "platforms").iterdir():
-            if p.is_dir() and (p / "android.jar").exists():
-                match = re.search(r'android-(\d+)', p.name)
-                if match:
-                    api_level = int(match.group(1))
-                    # 限制最高 API 级别为 35，避开不兼容的 36+ 或小数点预览版
-                    if api_level <= 35:
-                        candidate_platforms.append((api_level, p / "android.jar"))
+    def locate_tool(env_val, tool_name):
+        if env_val and os.path.exists(env_val):
+            return env_val
         
-        if candidate_platforms:
-            # 排序后取最高且稳定的版本 (比如 android-35)
-            candidate_platforms.sort(key=lambda x: x[0], reverse=True)
-            android_jar = candidate_platforms[0][1]
+        exe_name = f"{tool_name}.exe" if os.name == "nt" else tool_name
+        bat_name = f"{tool_name}.bat" if os.name == "nt" else tool_name
 
-    if not android_jar:
-        # 兜底保底方案
-        fallback = sdk_path / "platforms" / "android-35" / "android.jar"
-        if fallback.exists():
-            android_jar = fallback
-        else:
-            raise RuntimeError("[!] 未能定位兼容的 android.jar，请指定 ANDROID_JAR_PATH 环境变量。")
+        # 1. 优先使用 SDK build-tools 内配套的高版本工具（防 aapt2 版本过老）
+        if latest_build_tool:
+            for cand in [os.path.join(latest_build_tool, exe_name), os.path.join(latest_build_tool, bat_name)]:
+                if os.path.exists(cand):
+                    return cand
 
-    print(f"[+] 选中编译依赖基础库: {android_jar}")
+        # 2. 兜底使用系统 PATH 中的工具
+        found = shutil.which(tool_name)
+        if found:
+            return found
+
+        return None
+
+    aapt2 = locate_tool(aapt2, "aapt2")
+    zipalign = locate_tool(zipalign, "zipalign")
+    apksigner = locate_tool(apksigner, "apksigner")
+
+    if not android_jar and sdk_root and os.path.exists(os.path.join(sdk_root, "platforms")):
+        platforms_dir = os.path.join(sdk_root, "platforms")
+        platforms = sorted(os.listdir(platforms_dir), reverse=True)
+        for plat in platforms:
+            candidate = os.path.join(platforms_dir, plat, "android.jar")
+            if os.path.exists(candidate):
+                android_jar = candidate
+                break
+
+    if not aapt2 or not os.path.exists(aapt2):
+        raise RuntimeError("未找到 aapt2！请确认已安装 Android SDK 或手动配置 AAPT2_PATH 环境变量。")
+    if not zipalign or not os.path.exists(zipalign):
+        raise RuntimeError("未找到 zipalign！请确认已安装 Android SDK 或手动配置 ZIPALIGN_PATH 环境变量。")
+    if not apksigner or not os.path.exists(apksigner):
+        raise RuntimeError("未找到 apksigner！请确认已安装 Android SDK 或手动配置 APKSIGNER_PATH 环境变量。")
+    if not android_jar or not os.path.exists(android_jar):
+        raise RuntimeError("未找到 android.jar！请确认已安装 Android SDK 或手动配置 ANDROID_JAR_PATH 环境变量。")
+
+    print(f"[+] 成功定位工具链:\n    - AAPT2: {aapt2}\n    - ZIPALIGN: {zipalign}\n    - APKSIGNER: {apksigner}\n    - ANDROID_JAR: {android_jar}")
     return aapt2, zipalign, apksigner, android_jar
 
 def ensure_debug_keystore() -> Path:
