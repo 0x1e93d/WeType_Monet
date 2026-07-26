@@ -2,9 +2,9 @@
 # -*- coding: utf-8 -*-
 
 """
-微信输入法 Monet Overlay 自动化适配与构建工作流 (完整精简重构版)
+微信输入法 Monet Overlay 自动化适配与构建工作流 (深度映射修复版)
 适配顺序: Color -> String -> Drawable 三阶段独立处理
-命名规范: 所有未混淆名称与本地资源统一使用原始 key 进行匹配寻址
+解决问题: 解决 obfuscated_key 无法正确映射回混淆名称的问题
 """
 
 import hashlib
@@ -26,7 +26,6 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 
-# 目录规划
 CONFIG_DIR = PROJECT_ROOT / "config"
 SRC_DIR = PROJECT_ROOT / "src"
 OUT_DIR = PROJECT_ROOT / "out"
@@ -34,15 +33,12 @@ BUILD_TMP_DIR = OUT_DIR / "build_tmp"
 TEMPLATE_DIR = PROJECT_ROOT / "module_template"
 DECOMPILE_DIR = OUT_DIR / "decompiled_apk"
 
-# 关键文件
 BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
 
-# 远程源
 APK_URL = "https://z.weixin.qq.com/android/download?channel=latest"
 CHANGELOG_URL = "https://z.weixin.qq.com/web/changelog/android"
 
-# 模块元数据
 MODULE_ID = "Wetype_Monet"
 MODULE_NAME = "微信输入法 Monet"
 MODULE_AUTHOR = "酷安@1e93d"
@@ -55,7 +51,6 @@ BASE_VERSION = "v1.0.0"
 # ==============================================================================
 
 def get_git_info() -> tuple[str, str]:
-    """获取当前仓库提交次数与 Short Hash"""
     try:
         count = subprocess.check_output(
             ["git", "rev-list", "--count", "HEAD"], 
@@ -70,7 +65,6 @@ def get_git_info() -> tuple[str, str]:
         return "1", "dev"
 
 def calculate_sha256(file_path: Path) -> str:
-    """计算指定文件的 SHA256"""
     sha256 = hashlib.sha256()
     with open(file_path, "rb") as f:
         while chunk := f.read(8192):
@@ -78,7 +72,6 @@ def calculate_sha256(file_path: Path) -> str:
     return sha256.hexdigest()
 
 def find_sdk_tools() -> tuple[str, str, str, str]:
-    """自动查找 aapt2, zipalign, apksigner 与 android.jar 路径"""
     aapt2 = os.environ.get("AAPT2_PATH")
     zipalign = os.environ.get("ZIPALIGN_PATH")
     apksigner = os.environ.get("APKSIGNER_PATH")
@@ -126,7 +119,6 @@ def find_sdk_tools() -> tuple[str, str, str, str]:
     return aapt2, zipalign, apksigner, android_jar
 
 def ensure_debug_keystore() -> Path:
-    """确保 ~/.android/debug.keystore 存在，不存在则自动生成"""
     keystore = Path.home() / ".android" / "debug.keystore"
     if keystore.exists():
         return keystore
@@ -157,7 +149,6 @@ def ensure_debug_keystore() -> Path:
 # ==============================================================================
 
 def get_latest_sha256() -> tuple[str | None, str | None]:
-    """获取 config 目录下历史记录中最新的 JSON SHA256"""
     json_files = [f for f in CONFIG_DIR.glob("*.json") if f.name != "base.json"]
     if not json_files:
         return None, None
@@ -169,7 +160,6 @@ def get_latest_sha256() -> tuple[str | None, str | None]:
         return None, None
 
 def fetch_changelog_info() -> tuple[str, str, list[str]]:
-    """正则抓取官网的版本号、更新日期和更新日志"""
     headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
     req = urllib.request.Request(CHANGELOG_URL, headers=headers)
     try:
@@ -227,12 +217,16 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
 
 
 # ==============================================================================
-# 4. 阶段二：三大资源独立适配处理 (Color -> String -> Drawable)
+# 4. 阶段二：增强型 Smali 反查引擎与三大资源独立适配
 # ==============================================================================
 
-def parse_public_xml_mappings(res_type: str) -> dict[str, str]:
-    """解析 public.xml 获取 0x7f... ID 到 混淆名称 的映射"""
+def parse_public_xml_mappings(res_type: str) -> tuple[dict[str, str], dict[str, str]]:
+    """
+    解析 public.xml
+    返回: (0x7f... ID -> 混淆名称, 原始未混淆 Key -> 0x7f... ID)
+    """
     id_to_name = {}
+    name_to_id = {}
     public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
     if public_xml.exists():
         with open(public_xml, "r", encoding="utf-8", errors="ignore") as f:
@@ -240,36 +234,58 @@ def parse_public_xml_mappings(res_type: str) -> dict[str, str]:
             for line in f:
                 match = pattern.search(line)
                 if match:
-                    id_to_name[match.group(2).lower()] = match.group(1)
-    return id_to_name
+                    name, res_id = match.group(1), match.group(2).lower()
+                    id_to_name[res_id] = name
+                    name_to_id[name] = res_id
+    return id_to_name, name_to_id
 
 def parse_smali_mappings() -> dict[str, str]:
-    """全局扫描 Smali，建立 未混淆 key -> 0x7f... ID 的映射"""
+    """
+    深度扫描 Smali，通过多重规则构建: 未混淆 key -> 0x7f... ID 映射
+    """
     key_to_id = {}
-    field_pattern = re.compile(r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
-    const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
-    sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
+    
+    # 模式 1: 直接字段声明 `.field public static final key:I = 0x7f...`
+    p_field = re.compile(r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
+    
+    # 模式 2: const + sput 组合 (常见于静态初始化块 clinit 中)
+    p_const = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
+    p_sput = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
+
+    # 模式 3: const-string "key" 紧跟着资源赋值
+    p_str = re.compile(r'const-string\s+v\d+,\s*"([a-zA-Z0-9_$]+)"')
 
     for smali_dir in DECOMPILE_DIR.glob("smali*"):
         for smali_file in smali_dir.rglob("*.smali"):
             if not smali_file.is_file():
                 continue
+            
             with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
-                content = f.read()
-                for match in field_pattern.finditer(content):
-                    key_to_id[match.group(1)] = match.group(2).lower()
+                lines = f.readlines()
                 
-                lines = content.splitlines()
                 last_const_id = None
+                last_str_key = None
+                
                 for line in lines:
-                    c_match = const_pattern.search(line)
-                    if c_match:
-                        last_const_id = c_match.group(1).lower()
-                    else:
-                        sput_match = sput_pattern.search(line)
-                        if sput_match and last_const_id:
-                            key_to_id[sput_match.group(1)] = last_const_id
+                    # 规则 1
+                    if m_field := p_field.search(line):
+                        key_to_id[m_field.group(1)] = m_field.group(2).lower()
+                        continue
+
+                    # 规则 2
+                    if m_const := p_const.search(line):
+                        last_const_id = m_const.group(1).lower()
+                    elif m_sput := p_sput.search(line):
+                        if last_const_id:
+                            key_to_id[m_sput.group(1)] = last_const_id
                             last_const_id = None
+
+                    # 规则 3 (关联字符串与资源 ID)
+                    if m_str := p_str.search(line):
+                        last_str_key = m_str.group(1)
+                    elif last_str_key and last_const_id:
+                        key_to_id[last_str_key] = last_const_id
+                        last_str_key = None
 
     return key_to_id
 
@@ -277,16 +293,21 @@ def parse_smali_mappings() -> dict[str, str]:
 # --- PART A: COLOR 适配 ---
 def process_theme_colors(colors_list: list, key_to_id: dict) -> list:
     print("[1/3] 开始处理 Theme Colors...")
-    id_to_obf = parse_public_xml_mappings("color")
+    id_to_obf, name_to_id = parse_public_xml_mappings("color")
     processed = []
+    matched_count = 0
 
     for item in colors_list:
         raw_key = item.get("key") or item.get("unobfuscated_key") or ""
         if not raw_key:
             continue
 
-        res_id = key_to_id.get(raw_key)
+        # 优先通过 Smali 反查 ID，查不到则回退到 public.xml 尝试直连
+        res_id = key_to_id.get(raw_key) or name_to_id.get(raw_key)
         obf_key = id_to_obf.get(res_id, "") if res_id else ""
+
+        if obf_key and obf_key != raw_key:
+            matched_count += 1
 
         new_item = {
             "unobfuscated_key": raw_key,
@@ -299,23 +320,27 @@ def process_theme_colors(colors_list: list, key_to_id: dict) -> list:
 
         processed.append(new_item)
 
-    print(f"  └─ Theme Colors 完成: 共 {len(processed)} 项")
+    print(f"  └─ Theme Colors 完成: 共 {len(processed)} 项 (成功混淆映射: {matched_count} 项)")
     return processed
 
 
 # --- PART B: STRING 适配 ---
 def process_theme_strings(strings_list: list, key_to_id: dict) -> list:
     print("[2/3] 开始处理 Theme Strings...")
-    id_to_obf = parse_public_xml_mappings("string")
+    id_to_obf, name_to_id = parse_public_xml_mappings("string")
     processed = []
+    matched_count = 0
 
     for item in strings_list:
         raw_key = item.get("key") or item.get("unobfuscated_key") or ""
         if not raw_key:
             continue
 
-        res_id = key_to_id.get(raw_key)
+        res_id = key_to_id.get(raw_key) or name_to_id.get(raw_key)
         obf_key = id_to_obf.get(res_id, "") if res_id else ""
+
+        if obf_key and obf_key != raw_key:
+            matched_count += 1
 
         new_item = {
             "unobfuscated_key": raw_key,
@@ -324,26 +349,28 @@ def process_theme_strings(strings_list: list, key_to_id: dict) -> list:
         }
         processed.append(new_item)
 
-    print(f"  └─ Theme Strings 完成: 共 {len(processed)} 项")
+    print(f"  └─ Theme Strings 完成: 共 {len(processed)} 项 (成功混淆映射: {matched_count} 项)")
     return processed
 
 
 # --- PART C: DRAWABLE 适配 ---
 def process_theme_drawables(drawables_list: list, key_to_id: dict) -> list:
     print("[3/3] 开始处理 Theme Drawables...")
-    id_to_obf = parse_public_xml_mappings("drawable")
+    id_to_obf, name_to_id = parse_public_xml_mappings("drawable")
     processed = []
+    matched_count = 0
 
     for item in drawables_list:
-        # 输入全部统一为原始 key 命名
         raw_key = item.get("key") or item.get("unobfuscated_key") or ""
         if not raw_key:
             continue
 
-        res_id = key_to_id.get(raw_key)
+        res_id = key_to_id.get(raw_key) or name_to_id.get(raw_key)
         obf_key = id_to_obf.get(res_id, "") if res_id else ""
 
-        # 寻址本地物理文件：均根据未混淆 key 进行组合或通过直接声明的 file_path
+        if obf_key and obf_key != raw_key:
+            matched_count += 1
+
         file_path = item.get("file_path") or f"src/drawable/{raw_key}.png"
 
         new_item = {
@@ -353,7 +380,7 @@ def process_theme_drawables(drawables_list: list, key_to_id: dict) -> list:
         }
         processed.append(new_item)
 
-    print(f"  └─ Theme Drawables 完成: 共 {len(processed)} 项")
+    print(f"  └─ Theme Drawables 完成: 共 {len(processed)} 项 (成功混淆映射: {matched_count} 项)")
     return processed
 
 
@@ -361,13 +388,13 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
     if not BASE_CONFIG_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础配置文件: {BASE_CONFIG_PATH}")
 
-    print("[*] 正在扫描 Smali 反查表...")
+    print("[*] 正在扫描 Smali 映射表...")
     key_to_id = parse_smali_mappings()
+    print(f"  └─ Smali 符号表中发现 {len(key_to_id)} 组 Key -> ID 映射")
 
     with open(BASE_CONFIG_PATH, "r", encoding="utf-8") as f:
         base_config = json.load(f)
 
-    # 依次按 Color -> String -> Drawable 三步骤独立处理
     updated_colors = process_theme_colors(base_config.get("theme_colors", []), key_to_id)
     updated_strings = process_theme_strings(base_config.get("theme_strings", []), key_to_id)
     updated_drawables = process_theme_drawables(base_config.get("theme_drawables", []), key_to_id)
@@ -399,11 +426,10 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
 
 
 # ==============================================================================
-# 5. 阶段三：同步资源 (Colors, Strings & Drawables) 并编译 Overlay
+# 5. 阶段三：同步资源与编译 Overlay
 # ==============================================================================
 
 def sync_src_resources(config_file: Path):
-    """根据生成的版本 JSON 分步同步资源到编译输出目录"""
     with open(config_file, "r", encoding="utf-8") as f:
         config_data = json.load(f)
 
@@ -416,7 +442,7 @@ def sync_src_resources(config_file: Path):
     values_night_dir.mkdir(parents=True, exist_ok=True)
     drawable_target_dir.mkdir(parents=True, exist_ok=True)
 
-    # 1. 写入 Colors
+    # 1. Colors
     day_xml = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
     night_xml = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
 
@@ -434,9 +460,8 @@ def sync_src_resources(config_file: Path):
 
     (values_day_dir / "colors.xml").write_text("\n".join(day_xml), encoding="utf-8")
     (values_night_dir / "colors.xml").write_text("\n".join(night_xml), encoding="utf-8")
-    print("[+] 颜色资源 colors.xml 同步写入完成")
 
-    # 2. 写入 Strings
+    # 2. Strings
     string_xml = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
     for item in config_data.get("theme_strings", []):
         key = item.get("obfuscated_key") or item.get("unobfuscated_key")
@@ -447,9 +472,8 @@ def sync_src_resources(config_file: Path):
     string_xml.append('</resources>\n')
 
     (values_day_dir / "strings.xml").write_text("\n".join(string_xml), encoding="utf-8")
-    print("[+] 字符串资源 strings.xml 同步写入完成")
 
-    # 3. 处理并复制 Drawables (基于 key / file_path 找到未混淆的原始本地文件，并重命名为混淆名输出)
+    # 3. Drawables
     for item in config_data.get("theme_drawables", []):
         raw_key = item.get("unobfuscated_key")
         obf_name = item.get("obfuscated_key") or raw_key
@@ -458,10 +482,8 @@ def sync_src_resources(config_file: Path):
         if not obf_name:
             continue
 
-        # 按相对路径或 key 自动匹配文件
         src_file = PROJECT_ROOT / file_path if file_path else None
         if not src_file or not src_file.exists():
-            # 备用方案：通过 key 直接查找图片
             candidates = list((PROJECT_ROOT / "src").rglob(f"{raw_key}.*"))
             src_file = candidates[0] if candidates else None
 
@@ -469,12 +491,8 @@ def sync_src_resources(config_file: Path):
             ext = src_file.suffix.lstrip('.')
             target_file = drawable_target_dir / f"{obf_name}.{ext}"
             shutil.copy2(src_file, target_file)
-            print(f"[Drawable] 替换成功: {src_file.name} -> {target_file.name}")
-        else:
-            print(f"[!] 警告: 未找到对应的 Drawable 资源文件 (Key: {raw_key})")
 
 def build_overlay_apk():
-    """编译并签名 Overlay APK"""
     aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
     target_apk_dir = BUILD_TMP_DIR / "files"
     target_apk_dir.mkdir(parents=True, exist_ok=True)
@@ -484,10 +502,8 @@ def build_overlay_apk():
     aligned_apk = OUT_DIR / "aligned.apk"
     final_apk = target_apk_dir / "WetypeMonet.apk"
 
-    # Compile
     subprocess.run([str(aapt2), "compile", "--dir", str(SRC_DIR / "res"), "-o", str(compiled_zip)], check=True)
     
-    # Link
     link_cmd = [
         str(aapt2), "link", "-I", str(android_jar),
         "--manifest", str(SRC_DIR / "AndroidManifest.xml"),
@@ -496,7 +512,6 @@ def build_overlay_apk():
     ]
     subprocess.run(link_cmd, check=True)
 
-    # Zipalign & Sign
     subprocess.run([str(zipalign), "-p", "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
     keystore = ensure_debug_keystore()
     
