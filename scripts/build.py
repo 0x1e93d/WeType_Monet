@@ -2,8 +2,11 @@
 # -*- coding: utf-8 -*-
 
 """
-微信输入法 Monet Overlay 自动化适配与构建工作流 (GitHub Actions Linux 专用)
-支持 theme_colors 与 theme_drawables 统一适配映射
+微信输入法 Monet Overlay 自动化适配与构建工作流 (修复版)
+修复说明：
+1. 优化 Smali/Public.xml 映射逻辑，增加精准匹配与调试日志
+2. 修复 Drawable 相对路径解析，强制校验源文件存在性
+3. 规范 Monet 颜色引用与资源打包路径
 """
 
 import hashlib
@@ -25,7 +28,6 @@ from pathlib import Path
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 
-# 目录规划
 CONFIG_DIR = PROJECT_ROOT / "config"
 SRC_DIR = PROJECT_ROOT / "src"
 OUT_DIR = PROJECT_ROOT / "out"
@@ -33,15 +35,12 @@ BUILD_TMP_DIR = OUT_DIR / "build_tmp"
 TEMPLATE_DIR = PROJECT_ROOT / "module_template"
 DECOMPILE_DIR = OUT_DIR / "decompiled_apk"
 
-# 关键文件
 BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
 
-# 远程源
 APK_URL = "https://z.weixin.qq.com/android/download?channel=latest"
 CHANGELOG_URL = "https://z.weixin.qq.com/web/changelog/android"
 
-# 模块元数据
 MODULE_ID = "Wetype_Monet"
 MODULE_NAME = "微信输入法 Monet"
 MODULE_AUTHOR = "酷安@1e93d"
@@ -54,7 +53,6 @@ BASE_VERSION = "v1.0.0"
 # ==============================================================================
 
 def get_git_info() -> tuple[str, str]:
-    """获取当前仓库提交次数与 Short Hash"""
     try:
         count = subprocess.check_output(
             ["git", "rev-list", "--count", "HEAD"], 
@@ -69,7 +67,6 @@ def get_git_info() -> tuple[str, str]:
         return "1", "dev"
 
 def calculate_sha256(file_path: Path) -> str:
-    """计算指定文件的 SHA256"""
     sha256 = hashlib.sha256()
     with open(file_path, "rb") as f:
         while chunk := f.read(8192):
@@ -77,7 +74,6 @@ def calculate_sha256(file_path: Path) -> str:
     return sha256.hexdigest()
 
 def find_sdk_tools() -> tuple[str, str, str, str]:
-    """自动查找 aapt2, zipalign, apksigner 与 android.jar 路径"""
     aapt2 = os.environ.get("AAPT2_PATH")
     zipalign = os.environ.get("ZIPALIGN_PATH")
     apksigner = os.environ.get("APKSIGNER_PATH")
@@ -125,7 +121,6 @@ def find_sdk_tools() -> tuple[str, str, str, str]:
     return aapt2, zipalign, apksigner, android_jar
 
 def ensure_debug_keystore() -> Path:
-    """确保 ~/.android/debug.keystore 存在，不存在则自动生成"""
     keystore = Path.home() / ".android" / "debug.keystore"
     if keystore.exists():
         return keystore
@@ -152,11 +147,10 @@ def ensure_debug_keystore() -> Path:
 
 
 # ==============================================================================
-# 3. 阶段一：网络获取、SHA256 校验与 Apktool 解包
+# 3. 阶段一：网络获取与反编译
 # ==============================================================================
 
 def get_latest_sha256() -> tuple[str | None, str | None]:
-    """获取 config 目录下历史记录中最新的 JSON SHA256"""
     json_files = [f for f in CONFIG_DIR.glob("*.json") if f.name != "base.json"]
     if not json_files:
         return None, None
@@ -168,7 +162,6 @@ def get_latest_sha256() -> tuple[str | None, str | None]:
         return None, None
 
 def fetch_changelog_info() -> tuple[str, str, list[str]]:
-    """正则抓取官网的版本号、更新日期和更新日志"""
     headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
     req = urllib.request.Request(CHANGELOG_URL, headers=headers)
     try:
@@ -226,11 +219,11 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
 
 
 # ==============================================================================
-# 4. 阶段二：解析公共映射与混淆对齐 (重构逻辑)
+# 4. 阶段二：解析公共映射与混淆对齐 (核心修补逻辑)
 # ==============================================================================
 
 def parse_public_xml_mappings(res_type: str) -> dict[str, str]:
-    """解析 public.xml：0x7f... -> 混淆资源名 (obfuscated_name)"""
+    """解析 public.xml：0x7f... -> 混淆资源名"""
     id_to_name = {}
     public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
     if public_xml.exists():
@@ -244,9 +237,11 @@ def parse_public_xml_mappings(res_type: str) -> dict[str, str]:
     return id_to_name
 
 def parse_smali_mappings() -> dict[str, str]:
-    """通用 Smali 扫描器：源码字段/Key名 -> 0x7f... ID 映射"""
+    """深度解析 Smali：未混淆 key / R 字段名 -> 0x7f... 资源 ID"""
     key_to_id = {}
-    field_pattern = re.compile(r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
+    
+    # 正则：静态字段定义 (包含 R$color.smali / R$drawable.smali)
+    field_pattern = re.compile(r'\.field\s+public\s+static\s+final\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
     const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
     sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
 
@@ -256,9 +251,11 @@ def parse_smali_mappings() -> dict[str, str]:
                 continue
             with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
+                # 优先匹配直接字段赋值
                 for match in field_pattern.finditer(content):
                     key_to_id[match.group(1)] = match.group(2).lower()
                 
+                # 辅助匹配 const/sput 赋值
                 lines = content.splitlines()
                 last_const_id = None
                 for line in lines:
@@ -271,14 +268,13 @@ def parse_smali_mappings() -> dict[str, str]:
                             key_to_id[sput_match.group(1)] = last_const_id
                             last_const_id = None
 
-    print(f"[+] Smali 反查表建立完成，共抓取 {len(key_to_id)} 组 Key -> ID 映射")
+    print(f"[+] Smali 深度反查建立完成，共抓取 {len(key_to_id)} 组 Key -> ID 映射")
     return key_to_id
 
 def process_color_items(items: list, key_to_id: dict, id_to_obf_name: dict) -> list:
-    """处理 theme_colors 的命名对齐逻辑"""
     processed = []
+    matched_count = 0
     for item in items:
-        # 获取未混淆名称 (优先读 unobfuscated_key)
         unobf_key = item.get("unobfuscated_key") or item.get("key") or item.get("name") or ""
         if not unobf_key:
             continue
@@ -286,8 +282,12 @@ def process_color_items(items: list, key_to_id: dict, id_to_obf_name: dict) -> l
         res_id = key_to_id.get(unobf_key)
         obf_name = id_to_obf_name.get(res_id, "") if res_id else ""
 
+        if obf_name:
+            matched_count += 1
+
         new_item = {
             "unobfuscated_key": unobf_key,
+            # 如果成功查找到对应的混淆 ID 名称，则写入，查不到则保留原 key 方便调试排查
             "obfuscated_key": obf_name if obf_name else unobf_key
         }
         if "light" in item:
@@ -296,11 +296,12 @@ def process_color_items(items: list, key_to_id: dict, id_to_obf_name: dict) -> l
             new_item["night"] = item["night"]
 
         processed.append(new_item)
+    print(f"[+] Color 资源匹配状态: 总数 {len(items)}, 成功对齐混淆名 {matched_count} 项")
     return processed
 
 def process_drawable_items(items: list, key_to_id: dict, id_to_obf_name: dict) -> list:
-    """处理 theme_drawables 的命名对齐逻辑"""
     processed = []
+    matched_count = 0
     for item in items:
         unobf_name = item.get("unobfuscated_name") or item.get("name") or ""
         file_path = item.get("file_path") or ""
@@ -310,19 +311,22 @@ def process_drawable_items(items: list, key_to_id: dict, id_to_obf_name: dict) -
         res_id = key_to_id.get(unobf_name)
         obf_name = id_to_obf_name.get(res_id, "") if res_id else ""
 
+        if obf_name:
+            matched_count += 1
+
         new_item = {
             "unobfuscated_name": unobf_name,
             "obfuscated_name": obf_name if obf_name else unobf_name,
             "file_path": file_path
         }
         processed.append(new_item)
+    print(f"[+] Drawable 资源匹配状态: 总数 {len(items)}, 成功对齐混淆名 {matched_count} 项")
     return processed
 
 def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, release_date: str, changelog: list) -> Path:
     if not BASE_CONFIG_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础配置文件: {BASE_CONFIG_PATH}")
 
-    # 解析映射
     color_public = parse_public_xml_mappings("color")
     drawable_public = parse_public_xml_mappings("drawable")
     key_to_id = parse_smali_mappings()
@@ -359,11 +363,11 @@ def generate_version_config(sha256_str: str, apk_code: str, apk_name: str, relea
 
 
 # ==============================================================================
-# 5. 阶段三：同步资源 (Colors & Drawables) 并编译 Overlay
+# 5. 阶段三：同步资源并构建 Overlay (修补路径解析与资源目录结构)
 # ==============================================================================
 
 def sync_src_resources(config_file: Path):
-    """根据生成的版本 JSON 清理并全新构建 src/res 中的 颜色与 Drawable 资源"""
+    """同步 Colors 和 Drawables，强制路径校验与调试输出"""
     with open(config_file, "r", encoding="utf-8") as f:
         config_data = json.load(f)
 
@@ -372,7 +376,6 @@ def sync_src_resources(config_file: Path):
     values_night_dir = res_dir / "values-night"
     drawable_target_dir = res_dir / "drawable"
 
-    # 清理并全新创建
     if drawable_target_dir.exists():
         shutil.rmtree(drawable_target_dir)
     values_day_dir.mkdir(parents=True, exist_ok=True)
@@ -399,35 +402,41 @@ def sync_src_resources(config_file: Path):
     (values_night_dir / "colors.xml").write_text("\n".join(night_xml), encoding="utf-8")
     print("[+] 颜色资源 colors.xml 同步完成")
 
-    # 2. 复制并重命名 Drawables
+    # 2. 复制 Drawables (增强路径搜索与错误提示)
     drawable_count = 0
     for item in config_data.get("theme_drawables", []):
         obf_name = item.get("obfuscated_name") or item.get("unobfuscated_name")
-        file_path = item.get("file_path")
-        if not obf_name or not file_path:
+        file_path_str = item.get("file_path", "")
+        if not obf_name or not file_path_str:
             continue
 
-        src_file = PROJECT_ROOT / file_path
-        if src_file.exists():
-            ext = src_file.suffix  # 包含点号, .png / .xml
+        # 多重路径搜索兜底 (绝对路径 / 项目根目录相对路径 / src 相对路径)
+        src_file = Path(file_path_str)
+        if not src_file.is_absolute():
+            candidate1 = PROJECT_ROOT / file_path_str
+            candidate2 = SCRIPT_DIR / file_path_str
+            if candidate1.exists():
+                src_file = candidate1
+            elif candidate2.exists():
+                src_file = candidate2
+
+        if src_file.exists() and src_file.is_file():
+            ext = src_file.suffix.lower()
             target_file = drawable_target_dir / f"{obf_name}{ext}"
             shutil.copy2(src_file, target_file)
             drawable_count += 1
-            print(f"[Drawable] 引入资源: {src_file.name} -> {target_file.name}")
+            print(f"[Drawable 复制成功] {src_file.name} -> res/drawable/{target_file.name}")
         else:
-            print(f"[!] 警告: 未找到指定的 Drawable 资源文件: {src_file}")
+            print(f"[!] 错误: 无法在路径找到 Drawable 文件: {file_path_str} (尝试过绝对路径: {src_file})")
 
     print(f"[+] 共同步 {drawable_count} 个 Drawable 资源到 {drawable_target_dir}")
 
 def build_overlay_apk():
-    """编译并签名 Overlay APK，输出到 BUILD_TMP_DIR"""
+    """编译并签名 Overlay APK，并确保复制到模块打包目录"""
     aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
     
-    # 将 Overlay APK 放置在模块模板的正确位置 (假设在 system/product/overlay/ 或 files/)
-    # 优先创建 Overlay 存放路径
+    # 模块解压后的放置路径 (系统资源 Overlay 挂载路径)
     target_apk_dir = BUILD_TMP_DIR / "system" / "product" / "overlay"
-    if not (BUILD_TMP_DIR / "system").exists():
-        target_apk_dir = BUILD_TMP_DIR / "files"
     target_apk_dir.mkdir(parents=True, exist_ok=True)
 
     compiled_zip = OUT_DIR / "compiled.zip"
@@ -435,10 +444,10 @@ def build_overlay_apk():
     aligned_apk = OUT_DIR / "aligned.apk"
     final_apk = target_apk_dir / "WetypeMonet.apk"
 
-    # Compile
+    print("[*] 正在执行 aapt2 compile...")
     subprocess.run([str(aapt2), "compile", "--dir", str(SRC_DIR / "res"), "-o", str(compiled_zip)], check=True)
     
-    # Link
+    print("[*] 正在执行 aapt2 link...")
     link_cmd = [
         str(aapt2), "link", "-I", str(android_jar),
         "--manifest", str(SRC_DIR / "AndroidManifest.xml"),
@@ -447,7 +456,7 @@ def build_overlay_apk():
     ]
     subprocess.run(link_cmd, check=True)
 
-    # Zipalign & Sign
+    print("[*] 正在对 APK 进行 zipalign 与签名...")
     subprocess.run([str(zipalign), "-p", "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
     keystore = ensure_debug_keystore()
     
@@ -459,11 +468,11 @@ def build_overlay_apk():
     ]
     subprocess.run(sign_cmd, check=True)
 
-    # 清理过程中间文件
+    # 清理中间临时文件
     for tmp in [compiled_zip, unsigned_apk, aligned_apk, Path(f"{final_apk}.idsig")]:
         if tmp.exists():
             tmp.unlink()
-    print(f"[+] Overlay APK 成功构建并复制打包到: {final_apk}")
+    print(f"[+] Overlay APK 成功打包写入: {final_apk}")
 
 
 # ==============================================================================
@@ -471,7 +480,6 @@ def build_overlay_apk():
 # ==============================================================================
 
 def prepare_template():
-    """把模板目录全量拷贝到构建临时目录"""
     if BUILD_TMP_DIR.exists():
         shutil.rmtree(BUILD_TMP_DIR, ignore_errors=True)
     BUILD_TMP_DIR.mkdir(parents=True, exist_ok=True)
@@ -479,13 +487,8 @@ def prepare_template():
         shutil.copytree(TEMPLATE_DIR, BUILD_TMP_DIR, dirs_exist_ok=True)
 
 def generate_module_prop(apk_name: str, apk_code: str) -> str:
-    """优化版本与模块元数据生成机制"""
     git_count, git_hash = get_git_info()
-    
-    # Version Code: 优先用 APK 本身的 versionCode，否则用 git 提交数
     v_code = apk_code if apk_code else git_count
-    
-    # Version Name 优化格式: v1.0.0 (1.0.8) 或 v1.0.0 (dev_hash)
     version_suffix = apk_name if apk_name else git_hash
     v_name = f"{BASE_VERSION} ({version_suffix})"
     
@@ -503,8 +506,6 @@ def generate_module_prop(apk_name: str, apk_code: str) -> str:
     return v_name
 
 def create_module_zip(version_name: str):
-    """将 BUILD_TMP_DIR 压缩为标准的 Magisk/KernelSU Zip 刷机包"""
-    # 格式化文件名，避免包含非法字符
     safe_vname = re.sub(r'[\\/:*?"<>|\s]', '_', version_name)
     zip_path = OUT_DIR / f"{MODULE_ID}_{safe_vname}.zip"
     
@@ -519,42 +520,37 @@ def create_module_zip(version_name: str):
 
 
 # ==============================================================================
-# 7. 主流程执行控制
+# 7. 主流程控制
 # ==============================================================================
 
 def main():
     print("======================================================")
-    print(" 微信输入法 Monet Overlay 自动化适配与构建工作流 (扩展版)")
+    print(" 微信输入法 Monet Overlay 自动化适配与构建工作流")
     print("======================================================\n")
 
     CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
-        # 1. 下载解包
         sha256_str, apk_code, apk_name, release_date, changelog = download_and_decompile_apk()
-        
-        # 2. 生成版本 Config (计算混淆映射)
         config_path = generate_version_config(sha256_str, apk_code, apk_name, release_date, changelog)
         
-        # 3. 同步 SRC 资源 (Colors 和 Drawables)
-        sync_src_resources(config_path)
-        
-        # 4. 初始化模块模板
+        # 1. 先准备模板目录，防止路径清理覆盖
         prepare_template()
         
-        # 5. 生成 module.prop
-        built_vname = generate_module_prop(apk_name, apk_code)
+        # 2. 同步资源至 src/res
+        sync_src_resources(config_path)
         
-        # 6. 编译、签名 Overlay APK 并写入模块目录
+        # 3. 编译 Overlay APK 并打包至 BUILD_TMP_DIR/system/product/overlay/
         build_overlay_apk()
         
-        # 7. 压缩成 Magisk/KernelSU 模块 Zip
+        # 4. 写入 module.prop 并生成 Zip
+        built_vname = generate_module_prop(apk_name, apk_code)
         create_module_zip(built_vname)
 
-        print("\n[✓] 所有步骤全流程顺利执行完毕！")
+        print("\n[✓] 全流程执行顺利完成！")
     except Exception as e:
-        print(f"\n[!] 工作流执行异常中断: {e}")
+        print(f"\n[!] 工作流执行中断: {e}")
         sys.exit(1)
 
 if __name__ == "__main__":
