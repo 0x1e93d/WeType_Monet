@@ -1,13 +1,12 @@
 name: Auto Update & Build KSU Module
 
 on:
-#   schedule:
-#     # 每天定时检查更新 (UTC 时间 0:00，即北京时间 8:00)
-#     - cron: '0 0 * * *'
-  workflow_dispatch: # 支持手动触发
+  schedule:
+    - cron: '0 0 * * *' # 每天 UTC 0:00 自动检查更新
+  workflow_dispatch: # 允许手动点击运行
 
 permissions:
-  contents: write # 赋予写入权限
+  contents: write
 
 jobs:
   update-and-build:
@@ -17,7 +16,7 @@ jobs:
       - name: 检出仓库代码
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 完整拉取 Commit 历史，确保 build.py 能够正确计算 versionCode
+          fetch-depth: 0
 
       - name: 设置 Python 环境
         uses: actions/setup-python@v5
@@ -36,51 +35,13 @@ jobs:
           sudo apt-get install -y apktool zip
           pip install beautifulsoup4
 
-      - name: 运行 update_overlay.py 自动检测更新与构建
-        id: run_update
-        run: |
-          # 执行 update_overlay.py，内部会自动解析、生成 config/3.5.2（105020）.json 并触发 build.py
-          python3 scripts/update_overlay.py
-          
-          # 查找 config/ 下最新生成的 JSON 文件 (排除 base_colors.json)
-          LATEST_JSON=$(ls -t config/*.json 2>/dev/null | grep -v "base_colors.json" | head -n 1 || true)
-          
-          if [ -n "$LATEST_JSON" ]; then
-            echo "JSON_PATH=${LATEST_JSON}" >> $GITHUB_ENV
-            echo "JSON_FILENAME=$(basename "${LATEST_JSON}")" >> $GITHUB_ENV
-            echo "HAS_UPDATE=true" >> $GITHUB_ENV
-          else
-            echo "HAS_UPDATE=false" >> $GITHUB_ENV
-            echo "未检测到版本更新或未生成配置文件。"
-          fi
+      - name: 运行升级与构建脚本
+        run: python3 scripts/update.py
 
-      - name: 自动定位 build.py 在 out/ 目录下打出的 Zip 模块
-        if: env.HAS_UPDATE == 'true'
-        run: |
-          # 从 out/ 目录下查找最新生成的 .zip 模块
-          BUILT_ZIP=$(ls -t out/*.zip 2>/dev/null | head -n 1 || true)
-          
-          if [ -n "$BUILT_ZIP" ]; then
-            echo "ACTUAL_ZIP_PATH=${BUILT_ZIP}" >> $GITHUB_ENV
-            echo "ACTUAL_ZIP_NAME=$(basename "${BUILT_ZIP}")" >> $GITHUB_ENV
-            echo "成功找到构建产物: ${BUILT_ZIP}"
-          else
-            echo "ERROR: out/ 目录下未找到任何 .zip 模块产物，请检查 build.py 执行日志！"
-            exit 1
-          fi
-
-      - name: 上传产物 1：生成的版本 JSON 文件
-        if: env.HAS_UPDATE == 'true'
+      - name: 上传所有输出产物 (JSON + Zip)
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ env.JSON_FILENAME }}
-          path: ${{ env.JSON_PATH }}
+          name: Wetype-Module-Artifacts
+          path: out/*
           if-no-files-found: error
-
-      - name: 上传产物 2：KernelSU 模块压缩包 (.zip)
-        if: env.HAS_UPDATE == 'true'
-        uses: actions/upload-artifact@v4
-        with:
-          name: ${{ env.ACTUAL_ZIP_NAME }}
-          path: ${{ env.ACTUAL_ZIP_PATH }}
-          if-no-files-found: error
+          retention-days: 7

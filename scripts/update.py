@@ -5,6 +5,7 @@ import os
 import re
 import sys
 import json
+import shutil
 import hashlib
 import subprocess
 import urllib.request
@@ -16,6 +17,7 @@ SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 PROJECT_ROOT = os.path.abspath(os.path.join(SCRIPT_DIR, ".."))
 
 CONFIG_DIR = os.path.join(PROJECT_ROOT, "config")
+OUT_DIR = os.path.join(PROJECT_ROOT, "out")  # 统一产物输出目录
 BASE_COLORS_PATH = os.path.join(CONFIG_DIR, "base_colors.json")
 
 DOWNLOAD_APK_PATH = os.path.join(PROJECT_ROOT, "wetype_latest.apk")
@@ -35,7 +37,7 @@ def calculate_sha256(file_path):
     return sha256_hash.hexdigest()
 
 def get_latest_version_json_info():
-    """获取 config 目录下最新的 [版本名称].json 中的 SHA256"""
+    """获取 config 目录下最新的配置文件 SHA256"""
     if not os.path.exists(CONFIG_DIR):
         os.makedirs(CONFIG_DIR)
         return None, None
@@ -55,7 +57,7 @@ def get_latest_version_json_info():
         return None, None
 
 def fetch_changelog_info():
-    """从官网抓取更新日志、版本名称与发布日期"""
+    """根据真实 DOM 精准解析网页版本、日期与日志列表"""
     req = urllib.request.Request(
         CHANGELOG_URL, 
         headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'}
@@ -66,31 +68,36 @@ def fetch_changelog_info():
             
         soup = BeautifulSoup(html, 'html.parser')
         
-        # 1. 抓取网页展示的版本名称
-        meta_div = soup.find('div', class_='downloadMeta')
+        # 1. 抓取版本名称 (从 "3.5.2 for Android" 精准截取 "3.5.2")
+        download_meta = soup.find('div', class_='downloadMeta')
         web_version_name = ""
-        if meta_div:
-            text = meta_div.get_text()
+        if download_meta:
+            text = download_meta.get_text()
             match = re.search(r'发布版本:\s*([\d\.]+)', text)
             if match:
                 web_version_name = match.group(1).strip()
 
-        # 2. 抓取发布日期
-        date_div = soup.find('div', class_='meta')
+        # 2. 抓取发布日期 ("2026-07-22")
+        meta_div = soup.find('div', class_='meta')
         release_date = ""
-        if date_div:
-            text = date_div.get_text()
+        if meta_div:
+            text = meta_div.get_text()
             match = re.search(r'发布日期:\s*([\d\-]+)', text)
             if match:
                 release_date = match.group(1).strip()
 
-        # 3. 抓取更新日志
+        # 3. 抓取更新日志并清洗前缀符号
         content_div = soup.find('div', class_='content')
         changelog = []
         if content_div:
             h2_tags = content_div.find_all('h2')
-            changelog = [h2.get_text().strip() for h2 in h2_tags]
+            for h2 in h2_tags:
+                raw_text = h2.get_text().strip()
+                cleaned_text = re.sub(r'^\s*[\-\–\—]\s*', '', raw_text)
+                if cleaned_text:
+                    changelog.append(cleaned_text)
 
+        print(f"[+] 网页抓取结果 -> 版本: '{web_version_name}', 日期: '{release_date}', 日志数: {len(changelog)}")
         return web_version_name, release_date, changelog
     except Exception as e:
         print(f"[!] 抓取日志网页失败: {e}")
@@ -108,7 +115,7 @@ def decompile_apk():
     """使用 apktool 进行解包"""
     print(f"[*] 开始解包 APK 到: {DECOMPILE_DIR}")
     if os.path.exists(DECOMPILE_DIR):
-        subprocess.run(["rm", "-rf", DECOMPILE_DIR])
+        subprocess.run(["rm", "-rf", DECOMPILE_DIR], check=False)
     
     cmd = ["apktool", "d", DOWNLOAD_APK_PATH, "-o", DECOMPILE_DIR, "-f"]
     res = subprocess.run(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -118,13 +125,12 @@ def decompile_apk():
     print("[+] Apktool 解包成功！")
 
 def extract_apk_version_info():
-    """从解包后的 apktool.yml 中读取真实的 versionCode 和 versionName"""
+    """从 apktool.yml 中读取真实的 versionCode 和 versionName"""
     yml_path = os.path.join(DECOMPILE_DIR, "apktool.yml")
     version_code = ""
     version_name = ""
 
     if not os.path.exists(yml_path):
-        print(f"[!] 未找到 {yml_path}")
         return version_code, version_name
 
     with open(yml_path, "r", encoding="utf-8") as f:
@@ -137,48 +143,52 @@ def extract_apk_version_info():
     print(f"[+] 从 APK 内部提取到 -> 版本名称: {version_name}, 版本号: {version_code}")
     return version_code, version_name
 
-def find_target_smali_file():
-    """在 smali*/com/tencent/wetype/plugin/hld 搜索 Smali 类文件"""
+def build_full_key_to_id_map():
+    """全局解析所有 Smali 与 public.xml 映射表"""
+    key_to_id = {}
+    
+    # 1. 扫描 public.xml
+    public_xml_path = os.path.join(DECOMPILE_DIR, "res", "values", "public.xml")
+    if os.path.exists(public_xml_path):
+        tree = ET.parse(public_xml_path)
+        root = tree.getroot()
+        for child in root.findall("public"):
+            if child.attrib.get("type") == "color":
+                res_id = child.attrib.get("id", "").lower()
+                res_name = child.attrib.get("name", "")
+                if res_id and res_name:
+                    key_to_id[res_name] = res_id
+
+    # 2. 深度扫描 smali 字段
     smali_dirs = [d for d in os.listdir(DECOMPILE_DIR) if d.startswith("smali")]
-    target_rel_path = os.path.join("com", "tencent", "wetype", "plugin", "hld")
+    field_pattern = re.compile(r'\.field\s+.*?\s+([a-zA-Z0-9_]+):I\s*=\s*(0x7f[0-9a-fA-F]+)')
     
     for s_dir in smali_dirs:
-        search_path = os.path.join(DECOMPILE_DIR, s_dir, target_rel_path)
-        if os.path.exists(search_path):
-            for root, _, files in os.walk(search_path):
-                for file in files:
-                    if file.endswith(".smali"):
-                        full_file_path = os.path.join(root, file)
-                        with open(full_file_path, "r", encoding="utf-8", errors="ignore") as f:
-                            content = f.read()
-                            if "BW_0_Alpha_0_0_3" in content or "ime_skin_BW_0_Alpha_0_9" in content:
-                                print(f"[+] 找到目标 Smali 类文件: {full_file_path}")
-                                return full_file_path
-    return None
+        target_path = os.path.join(DECOMPILE_DIR, s_dir, "com", "tencent", "wetype")
+        if not os.path.exists(target_path):
+            continue
+            
+        for root, _, files in os.walk(target_path):
+            for file in files:
+                if file.endswith(".smali"):
+                    full_path = os.path.join(root, file)
+                    with open(full_path, "r", encoding="utf-8", errors="ignore") as f:
+                        for line in f:
+                            match = field_pattern.search(line)
+                            if match:
+                                k_name = match.group(1)
+                                r_id = match.group(2).lower()
+                                key_to_id[k_name] = r_id
 
-def parse_smali_key_to_id(smali_path):
-    """解析 Smali 文件中的 字段名 -> 十六进制 ID"""
-    key_to_id = {}
-    pattern = re.compile(r'\.field\s+public\s+static\s+final\s+([a-zA-Z0-9_]+):I\s*=\s*(0x7f[0-0a-fA-F]+)')
-    
-    with open(smali_path, "r", encoding="utf-8") as f:
-        for line in f:
-            match = pattern.search(line)
-            if match:
-                key_name = match.group(1)
-                res_id = match.group(2).lower()
-                key_to_id[key_name] = res_id
-                
-    print(f"[+] 从 Smali 中成功提取出 {len(key_to_id)} 个 Key-ID 映射项")
+    print(f"[+] 聚合建立全局 Key-ID 字典库，共匹配到 {len(key_to_id)} 个色彩项")
     return key_to_id
 
 def parse_public_xml_id_to_name():
-    """解析 res/values/public.xml 中的 十六进制 ID -> 混淆后的资源 Name"""
+    """解析 res/values/public.xml 中的 ID -> 混淆 Name"""
     public_xml_path = os.path.join(DECOMPILE_DIR, "res", "values", "public.xml")
     id_to_name = {}
     
     if not os.path.exists(public_xml_path):
-        print(f"[!] 未能找到 public.xml: {public_xml_path}")
         return id_to_name
         
     tree = ET.parse(public_xml_path)
@@ -191,7 +201,6 @@ def parse_public_xml_id_to_name():
             if res_id and res_name:
                 id_to_name[res_id] = res_name
                 
-    print(f"[+] 从 public.xml 中成功提取出 {len(id_to_name)} 个 ID-混淆Name 映射项")
     return id_to_name
 
 # ----------------- 主执行流程 -----------------
@@ -199,9 +208,11 @@ def parse_public_xml_id_to_name():
 def main():
     print("=== 微信输入法 Overlay 自动适配与更新脚本 ===")
     
+    os.makedirs(CONFIG_DIR, exist_ok=True)
+    os.makedirs(OUT_DIR, exist_ok=True)
+
     # 1. 抓取网页端日志与版本名称
     web_version_name, release_date, changelog = fetch_changelog_info()
-    print(f"[*] 网页提取版本名称: '{web_version_name}' ({release_date})")
 
     # 2. 下载 APK 并计算 SHA256
     download_apk()
@@ -219,29 +230,22 @@ def main():
     # 4. 执行 Apktool 解包
     decompile_apk()
 
-    # 5. 从 APK 内部精准提取 versionCode 与 versionName
+    # 5. 读取真实元数据
     apk_version_code, apk_version_name = extract_apk_version_info()
     if not apk_version_name:
-        print("[!] 无法从 APK 内部获取 versionName，回退使用网页抓取或默认值")
         apk_version_name = web_version_name if web_version_name else "unknown_version"
 
-    # 6. 比对网页版本名称与 APK 真实版本名称（校验网页延迟）
+    # 6. 比对网页版本名称与 APK 真实版本名称
     final_changelog = changelog
     if web_version_name and web_version_name != apk_version_name:
-        print(f"[!] 警告: 网页版本名称 ('{web_version_name}') 与 APK 真实版本名称 ('{apk_version_name}') 不匹配！")
-        print("    可能网页存在更新延迟，清空本次日志以防记录错误日志。")
+        print(f"[!] 网页版本('{web_version_name}') 与 APK 版本('{apk_version_name}') 不一致，清空日志。")
         final_changelog = []
 
-    # 7. 定位 Smali 类并解析色彩 Key 与 ID 映射
-    smali_file = find_target_smali_file()
-    if not smali_file:
-        print("[!] 错误: 未找到色彩 ID 定义 Smali 类！")
-        sys.exit(1)
-
-    unobfuscated_to_id = parse_smali_key_to_id(smali_file)
+    # 7. 解析映射字典
+    key_to_id_map = build_full_key_to_id_map()
     id_to_obfuscated_name = parse_public_xml_id_to_name()
 
-    # 8. 读取 base_colors.json 模板
+    # 8. 读取模板
     if not os.path.exists(BASE_COLORS_PATH):
         print(f"[!] 模板文件不存在: {BASE_COLORS_PATH}")
         sys.exit(1)
@@ -249,7 +253,7 @@ def main():
     with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
         base_colors_data = json.load(f)
 
-    # 9. 构建适配表
+    # 9. 构建主题颜色配置项
     updated_colors = []
     missing_keys = []
 
@@ -259,7 +263,7 @@ def main():
         night_color = item.get("night")
         description = item.get("description", "")
 
-        res_id = unobfuscated_to_id.get(unobfuscated_key)
+        res_id = key_to_id_map.get(unobfuscated_key)
         obfuscated_key = id_to_obfuscated_name.get(res_id) if res_id else None
 
         if not obfuscated_key:
@@ -277,7 +281,7 @@ def main():
     if missing_keys:
         print(f"[!] 警告: {len(missing_keys)} 个 Key 未在 Smali/public.xml 中找到对应混淆 ID。")
 
-    # 10. 组装 JSON 保存结构
+    # 10. 组装 JSON
     output_json_data = {
         "version_name": apk_version_name,
         "version_code": apk_version_code,
@@ -287,21 +291,31 @@ def main():
         "theme_colors": updated_colors
     }
 
-    # 11. 保存为 config/[版本名称].json
+    # 11. 保存 JSON 到 config/ 目录，同时同步一份至 out/ 统一产物目录
     safe_version_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_version_name)
-    output_filename = f"{safe_version_name}.json"
-    output_json_path = os.path.join(CONFIG_DIR, output_filename)
+    safe_version_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_version_code)
+    
+    output_filename = f"{safe_version_name}（{safe_version_code}）.json" if safe_version_code else f"{safe_version_name}.json"
+    
+    config_json_path = os.path.join(CONFIG_DIR, output_filename)
+    out_json_path = os.path.join(OUT_DIR, output_filename)
 
-    with open(output_json_path, "w", encoding="utf-8") as f:
+    # 写入 config/ 目录
+    with open(config_json_path, "w", encoding="utf-8") as f:
         json.dump(output_json_data, f, ensure_ascii=False, indent=4)
+        
+    # 复制到 out/ 产物目录
+    shutil.copy2(config_json_path, out_json_path)
 
-    print(f"[+] 成功保存版本配置文件: {output_json_path}")
+    print(f"[+] 成功生成 JSON 配置文件:")
+    print(f"    - 配置存档: {config_json_path}")
+    print(f"    - 统一产物: {out_json_path}")
 
-    # 12. 自动触发构建打包脚本
+    # 12. 自动调用 build.py 进行打包构建
     build_script_path = os.path.join(SCRIPT_DIR, "build.py")
     if os.path.exists(build_script_path):
-        print(f"[*] 调用构建脚本: {build_script_path}")
-        subprocess.run([sys.executable, build_script_path, output_json_path])
+        print(f"[*] 启动构建脚本: {build_script_path}")
+        subprocess.run([sys.executable, build_script_path, config_json_path], check=True)
 
 if __name__ == "__main__":
     main()
