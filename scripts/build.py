@@ -6,7 +6,7 @@
 
 阶段划分:
   - Phase 1: 检查更新、下载 APK 并使用 Apktool 解包
-  - Phase 2: 提取 Smali 中的 Key-ID 映射，生成版本 JSON 配置
+  - Phase 2: 提取 Smali 与 public.xml 中的 Key-ID 映射，生成版本 JSON 配置
   - Phase 3: 生成 values/colors.xml 与 values-night/colors.xml，并编译 Overlay APK
   - Phase 4: 组装模块结构并生成 Magisk/KernelSU 刷机 ZIP 包
 """
@@ -251,7 +251,6 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
 
     yml_path = DECOMPILE_DIR / "apktool.yml"
     apk_code, apk_name = "", ""
-    # 找到解析 apktool.yml 的循环，加上 .strip(" '\"\r\n") 过滤尾部换行符：
     if yml_path.exists():
         with open(yml_path, "r", encoding="utf-8") as f:
             for line in f:
@@ -266,13 +265,26 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
     return new_sha256, apk_code, final_apk_name, release_date, final_changelog
 
 # ==============================================================================
-# 4. 阶段二：提取 Smali 混淆 Key 映射与生成配置
+# 4. 阶段二：提取 Smali & public.xml 混淆 Key 映射与生成配置
 # ==============================================================================
 
+def parse_public_xml_color_mappings() -> dict[str, str]:
+    """从 res/values/public.xml 解析出真实的 Resource ID 与未混淆 XML 资源名映射"""
+    id_to_unobfuscated = {}
+    public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
+    if public_xml.exists():
+        with open(public_xml, "r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                match = re.search(r'<public\s+type="color"\s+name="([^"]+)"\s+id="(0x[0-9a-fA-F]+)"', line)
+                if match:
+                    res_name, res_id = match.group(1), match.group(2).lower()
+                    id_to_unobfuscated[res_id] = res_name
+    return id_to_unobfuscated
+
 def parse_smali_color_mappings() -> dict[str, str]:
-    """深度正则扫描 Smali 代码中的资源 ID 定义"""
-    key_to_id = {}
-    smali_field_pattern = re.compile(r'\.field\s+.*?\s+([a-zA-Z0-9_]+):I\s*=\s*(0x7f[0-9a-fA-F]+)')
+    """深度正则扫描 Smali 代码中的资源 ID 定义 (Smali_Field -> ID)"""
+    id_to_obfuscated = {}
+    smali_field_pattern = re.compile(r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]+)')
     
     for smali_dir in DECOMPILE_DIR.glob("smali*"):
         target_pkg = smali_dir / "com" / "tencent" / "wetype"
@@ -281,10 +293,11 @@ def parse_smali_color_mappings() -> dict[str, str]:
         for smali_file in target_pkg.rglob("*.smali"):
             with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
                 for match in smali_field_pattern.finditer(f.read()):
-                    key_to_id[match.group(1)] = match.group(2).lower()
+                    field_name, res_id = match.group(1), match.group(2).lower()
+                    id_to_obfuscated[res_id] = field_name
 
-    print(f"[+] Smali 扫描完成，共获取 {len(key_to_id)} 项 Key-ID 字典")
-    return key_to_id
+    print(f"[+] Smali 扫描完成，共获取 {len(id_to_obfuscated)} 项 Key-ID 字典")
+    return id_to_obfuscated
 
 def generate_version_config(
     sha256_str: str, apk_code: str, apk_name: str, release_date: str, changelog: list[str]
@@ -293,7 +306,11 @@ def generate_version_config(
     if not BASE_COLORS_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础颜色模板: {BASE_COLORS_PATH}")
 
-    key_to_id = parse_smali_color_mappings()
+    id_to_obfuscated = parse_smali_color_mappings()
+    id_to_unobfuscated = parse_public_xml_color_mappings()
+
+    # 建立 反向字典: unobfuscated_key (资源名) -> res_id
+    unobf_name_to_id = {v: k for k, v in id_to_unobfuscated.items()}
 
     with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
         base_colors = json.load(f).get("theme_colors", [])
@@ -301,33 +318,49 @@ def generate_version_config(
     updated_colors, missing_keys = [], []
     for item in base_colors:
         raw_key = item.get("key")
-        res_id = key_to_id.get(raw_key)
+        res_id = unobf_name_to_id.get(raw_key)
         
+        obf_key = ""
+        if res_id:
+            # 尝试从 Smali 查出该 ID 对应的字段名
+            obf_key = id_to_obfuscated.get(res_id, "")
+
+        # 核心修复卡点：若混淆键与未混淆键完全一致，说明未发生混淆，清空 obfuscated_key
+        if obf_key == raw_key:
+            obf_key = ""
+
         if not res_id:
             missing_keys.append(raw_key)
 
         updated_colors.append({
             "unobfuscated_key": raw_key,
-            "obfuscated_key": raw_key,  # 若需配合混淆替换，可在此处绑定关联逻辑
+            "obfuscated_key": obf_key,
             "light": item.get("light"),
             "night": item.get("night"),
             "description": item.get("description", "")
         })
 
     if missing_keys:
-        print(f"[!] 警告: 共 {len(missing_keys)} 个 Key 未能在 Smali 中发现硬编码定义。")
+        print(f"[!] 警告: 共 {len(missing_keys)} 个 Key 未能在 public.xml 中匹配到定义。")
 
     safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_code)
     filename = f"{safe_name}({safe_code}).json" if safe_code else f"{safe_name}.json"
 
-    json_payload = {
+    # 基础 Payload
+    raw_payload = {
         "version_name": apk_name,
         "version_code": apk_code,
         "release_date": release_date,
         "sha256": sha256_str,
         "changelog": changelog,
         "theme_colors": updated_colors
+    }
+
+    # 核心修复：清理所有空字段（"" / None / []）
+    json_payload = {
+        k: v for k, v in raw_payload.items()
+        if v not in (None, "", [])
     }
 
     config_path = CONFIG_DIR / filename
@@ -364,6 +397,7 @@ def sync_src_colors_xml(config_file: Path):
     night_xml_lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
 
     for item in theme_colors:
+        # 如果有独立的混淆键优先使用混淆键，没有则回退到未混淆键
         key_name = item.get("obfuscated_key") or item.get("unobfuscated_key")
         
         light_color = item.get("light")
@@ -475,8 +509,13 @@ def prepare_template():
 def generate_module_prop(version_name_override: str, version_code_override: str) -> str:
     """自动生成模块声明说明文件 module.prop"""
     git_count, git_hash = get_git_info()
-    version_code = version_code_override or os.environ.get("VERSION_CODE", git_count)
-    version_name = f"{BASE_VERSION}-{version_name_override}" if version_name_override else f"{BASE_VERSION}-{git_hash}"
+    
+    # 清理多余字符与换行
+    v_code = (version_code_override or os.environ.get("VERSION_CODE", git_count)).strip()
+    v_name_raw = version_name_override.strip() if version_name_override else ""
+    
+    version_code = v_code
+    version_name = f"{BASE_VERSION}-{v_name_raw}" if v_name_raw else f"{BASE_VERSION}-{git_hash}"
 
     build_time = datetime.now().strftime("%Y-%m-%d %H:%M")
     description = f"{MODULE_DESCRIPTION} [构建时间: {build_time}]"
