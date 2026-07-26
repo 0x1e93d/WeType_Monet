@@ -1,45 +1,72 @@
-name: Auto Update WeInput Overlay
+name: Auto Update & Build KSU Module
 
 on:
-  # 仅保留手动触发
-  workflow_dispatch:
+  schedule:
+    # 每天定时检查更新 (UTC时间 0:00，即北京时间 8:00)
+    # - cron: '0 0 * * *'
+  workflow_dispatch: # 支持在 GitHub 界面手动触发执行
 
 jobs:
-  build:
+  update-and-build:
     runs-on: ubuntu-latest
 
     steps:
-      # 1. 检出代码仓库
-      - name: Checkout Repository
+      - name: 检出仓库代码
         uses: actions/checkout@v4
 
-      # 2. 设置 Python 环境
-      - name: Set up Python
+      - name: 设置 Python 环境
         uses: actions/setup-python@v5
         with:
           python-version: '3.10'
 
-      # 3. 安装依赖
-      - name: Install Dependencies
-        run: |
-          python -m pip install --upgrade pip
-          pip install beautifulsoup4
+      - name: 设置 Java 环境 (Apktool 依赖)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'zulu'
+          java-version: '17'
 
-      # 4. 安装 Apktool
-      - name: Install Apktool
+      - name: 安装系统依赖 (Apktool) 与 Python 库
         run: |
           sudo apt-get update
-          sudo apt-get install -y apktool
+          sudo apt-get install -y apktool zip
+          pip install beautifulsoup4
 
-      # 5. 运行自动化更新与构建脚本
-      - name: Run Update & Build Script
+      - name: 运行 update.py 自动检测更新与构建
+        id: run_update
         run: |
-          python scripts/update_overlay.py
+          # 执行 update_overlay.py，内部会进行 SHA256 校验、解包解析，生成 config/版本号.json 并调用 build_overlay.py
+          python3 scripts/update_overlay.py
+          
+          # 动态查找 config/ 下除了 base_colors.json 之外最新生成的 JSON 文件路径
+          LATEST_JSON=$(ls -t config/*.json | grep -v "base_colors.json" | head -n 1)
+          echo "JSON_PATH=${LATEST_JSON}" >> $GITHUB_ENV
+          
+          # 获取生成的 JSON 文件名（例如 3.5.2（105020）.json）
+          JSON_FILENAME=$(basename "${LATEST_JSON}")
+          echo "JSON_FILENAME=${JSON_FILENAME}" >> $GITHUB_ENV
 
-      # 5. 上传编译好的 ZIP 刷机包
-      - name: Upload Built Zip Artifact
+      - name: 读取模块信息 (确定 Zip 名称)
+        run: |
+          if [ -f "module.prop" ]; then
+            MODULE_ID=$(grep -E "^id=" module.prop | cut -d'=' -f2 | tr -d '\r')
+            VERSION=$(grep -E "^version=" module.prop | cut -d'=' -f2 | tr -d '\r')
+          else
+            MODULE_ID="WeType_Overlay"
+            VERSION="latest"
+          fi
+          ZIP_NAME="${MODULE_ID}_${VERSION}.zip"
+          echo "ZIP_NAME=${ZIP_NAME}" >> $GITHUB_ENV
+
+      - name: 上传产物 1：生成的版本 JSON 文件
         uses: actions/upload-artifact@v4
         with:
-          name: WetypeMonet-Module # 在 GitHub Actions 产物列表中显示的名称
-          path: out/*.zip           # 打包上传 out 目录下所有的 .zip 模块文件
-          retention-days: 7        # 产物保存期限设置为 7 天（到期后自动清理）
+          name: ${{ env.JSON_FILENAME }}
+          path: ${{ env.JSON_PATH }}
+          if-no-files-found: error
+
+      - name: 上传产物 2：KernelSU 模块压缩包 (.zip)
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ env.ZIP_NAME }}
+          path: ${{ env.ZIP_NAME }}
+          if-no-files-found: error
