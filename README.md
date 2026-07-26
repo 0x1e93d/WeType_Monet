@@ -1,12 +1,30 @@
-# WeType_Gboard
+# WeType Monet
 
-微信输入法 Monet Overlay 主题。
+为安卓版微信输入法提供 Monet 动态色彩 Overlay 的 Magisk/KernelSU 模块。
 
-## 目录
+## 安装
 
-- `config/base.json`：颜色、字符串和 Drawable 的基准配置。
-- `config/module.json`：模块展示版本，提交构建时自动递增补丁位。
-- `overlay/`：Overlay 清单、源 Drawable 与构建时生成的资源目录。
-- `module_template/`：Magisk/KernelSU 模块模板。
-- `scripts/`：构建和版本管理入口。
-- `tests/`：离线映射与版本规则测试。
+1. 在 [Releases](https://github.com/0x1e93d/WeType_Monet/releases) 下载最新的模块 ZIP。
+2. 使用 Magisk 或 KernelSU 安装 ZIP。
+
+需要 Android 14 及以上和已启用的 Magisk 或 KernelSU 环境。
+
+## 发布产物
+
+- `Wetype_Monet_*.zip`：用于 Magisk/KernelSU 的 Overlay 模块。
+- `版本号(版本代码).json`：该微信输入法版本的资源映射结果。
+
+Release 页面会记录模块版本、发布序号、适配的微信输入法版本和本次提交摘要。
+
+## 自动构建
+
+GitHub Actions 每天北京时间 06:00 检查微信输入法更新，也会在核心文件提交到 `main` 时触发。
+
+
+## 推荐搭配
+
+- [WeType-Swipe](https://github.com/waoui/WeType-Swipe)：LSPosed 模块，为微信输入法的 26 键和九宫格提供可配置的按键下滑快捷操作，例如全选、剪切、复制和粘贴。它与本项目的视觉 Overlay 职责不同，可以搭配使用；需在 LSPosed 中启用并将作用域设为微信输入法。
+
+## 贡献
+
+提交前请运行测试。更新 Drawable 时，同时更新 `config/base.json`；测试会校验配置清单、文件路径和资源说明是否完整。
