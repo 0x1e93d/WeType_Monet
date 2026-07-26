@@ -670,7 +670,7 @@
         },
         {
             "key": "ime_custom_phrase_tips",
-            "value": null,
+            "value": "",
             "description": "自定义短语提示"
         },
         {
