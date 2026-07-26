@@ -1,0 +1,668 @@
+{
+    "version_name": "3.5.2",
+    "version_code": "55201",
+    "sha256": "71397a9fcb21123b229e68d7481d5a81240cf9b142b548c082ffcc07aa5ad621",
+    "theme_colors": [
+        {
+            "unobfuscated_key": "White",
+            "obfuscated_key": "White",
+            "light": "@android:color/system_on_surface_light",
+            "night": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_key_back_icon_color",
+            "obfuscated_key": "ime_key_back_icon_color",
+            "light": "@android:color/system_on_surface_light",
+            "night": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_start_color",
+            "obfuscated_key": "ime_skin_candidate_start_color",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_end_color",
+            "obfuscated_key": "ime_skin_candidate_end_color",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_keyboard_end_color",
+            "obfuscated_key": "ime_skin_keyboard_end_color",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_keyboard_background",
+            "obfuscated_key": "ime_skin_keyboard_background",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_start_color",
+            "obfuscated_key": "ime_skin_dark_candidate_start_color",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_end_color",
+            "obfuscated_key": "ime_skin_dark_candidate_end_color",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_keyboard_end_color",
+            "obfuscated_key": "ime_skin_dark_keyboard_end_color",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_keyboard_background",
+            "obfuscated_key": "ime_skin_dark_keyboard_background",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_black",
+            "obfuscated_key": "ime_skin_black",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_black",
+            "obfuscated_key": "ime_skin_dark_black",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_06",
+            "obfuscated_key": "ime_skin_color_06",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_06",
+            "obfuscated_key": "ime_skin_dark_color_06",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_18",
+            "obfuscated_key": "ime_skin_color_18",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_18",
+            "obfuscated_key": "ime_skin_dark_color_18",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_clipboard_item_bg_color",
+            "obfuscated_key": "ime_skin_clipboard_item_bg_color",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_clipboard_item_bg_color",
+            "obfuscated_key": "ime_skin_dark_clipboard_item_bg_color",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_right_container_icon_color",
+            "obfuscated_key": "ime_skin_candidate_right_container_icon_color",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_right_container_icon_color",
+            "obfuscated_key": "ime_skin_dark_candidate_right_container_icon_color",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_04",
+            "obfuscated_key": "ime_skin_color_04",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_04",
+            "obfuscated_key": "ime_skin_dark_color_04",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_08",
+            "obfuscated_key": "ime_skin_color_08",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_08",
+            "obfuscated_key": "ime_skin_dark_color_08",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_candidate_type_container_bg_color_fixed",
+            "obfuscated_key": "ime_skin_candidate_type_container_bg_color_fixed",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_candidate_type_container_bg_color_fixed",
+            "obfuscated_key": "ime_skin_dark_candidate_type_container_bg_color_fixed",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_S5_type_selected_color",
+            "obfuscated_key": "ime_skin_S5_type_selected_color",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_S5_type_selected_color",
+            "obfuscated_key": "ime_skin_dark_S5_type_selected_color",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_16",
+            "obfuscated_key": "ime_skin_color_16",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_16",
+            "obfuscated_key": "ime_skin_dark_color_16",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_05",
+            "obfuscated_key": "ime_skin_color_05",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_05",
+            "obfuscated_key": "ime_skin_dark_color_05",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_S5_img_type_icon_color_selected",
+            "obfuscated_key": "ime_skin_S5_img_type_icon_color_selected",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_S5_img_type_icon_color_selected",
+            "obfuscated_key": "ime_skin_dark_S5_img_type_icon_color_selected",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_12",
+            "obfuscated_key": "ime_skin_color_12",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_12",
+            "obfuscated_key": "ime_skin_dark_color_12",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_bg",
+            "obfuscated_key": "ime_skin_color_btn_white_bg",
+            "light": "@android:color/system_surface_container_lowest_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_bg",
+            "obfuscated_key": "ime_skin_dark_color_btn_white_bg",
+            "light": "@android:color/system_surface_container_highest_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_text",
+            "obfuscated_key": "ime_skin_color_btn_white_text",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_text",
+            "obfuscated_key": "ime_skin_dark_color_btn_white_text",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_07",
+            "obfuscated_key": "ime_skin_color_07",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_07",
+            "obfuscated_key": "ime_skin_dark_color_07",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_19",
+            "obfuscated_key": "ime_skin_color_19",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_19",
+            "obfuscated_key": "ime_skin_dark_color_19",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_13",
+            "obfuscated_key": "ime_skin_color_13",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_13",
+            "obfuscated_key": "ime_skin_dark_color_13",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_green_bg",
+            "obfuscated_key": "ime_skin_color_btn_green_bg",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_green_bg",
+            "obfuscated_key": "ime_skin_dark_color_btn_green_bg",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_14",
+            "obfuscated_key": "ime_skin_color_14",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_14",
+            "obfuscated_key": "ime_skin_dark_color_14",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_14_Alpha_20",
+            "obfuscated_key": "ime_skin_color_14_Alpha_20",
+            "light": "@android:color/system_secondary_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_14_Alpha_20",
+            "obfuscated_key": "ime_skin_dark_color_14_Alpha_20",
+            "light": "@android:color/system_secondary_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_17",
+            "obfuscated_key": "ime_skin_color_17",
+            "light": "@android:color/system_secondary_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_17",
+            "obfuscated_key": "ime_skin_dark_color_17",
+            "light": "@android:color/system_secondary_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_02",
+            "obfuscated_key": "ime_skin_color_02",
+            "light": "@android:color/system_on_surface_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_02",
+            "obfuscated_key": "ime_skin_dark_color_02",
+            "light": "@android:color/system_on_surface_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_10",
+            "obfuscated_key": "ime_skin_color_10",
+            "light": "@android:color/system_surface_container_low_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_10",
+            "obfuscated_key": "ime_skin_dark_color_10",
+            "light": "@android:color/system_surface_container_high_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_00_Alpha_15",
+            "obfuscated_key": "ime_skin_color_00_Alpha_15",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_00_Alpha_15",
+            "obfuscated_key": "ime_skin_dark_color_00_Alpha_15",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_00_Alpha_25",
+            "obfuscated_key": "ime_skin_color_00_Alpha_25",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_00_Alpha_25",
+            "obfuscated_key": "ime_skin_dark_color_00_Alpha_25",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_divider",
+            "obfuscated_key": "ime_skin_color_divider",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_divider",
+            "obfuscated_key": "ime_skin_dark_color_divider",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_alternative_keyboard_bg_color",
+            "obfuscated_key": "ime_skin_alternative_keyboard_bg_color",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_alternative_keyboard_bg_color",
+            "obfuscated_key": "ime_skin_dark_alternative_keyboard_bg_color",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_candidate_syllable_select_bg_color_light",
+            "obfuscated_key": "ime_candidate_syllable_select_bg_color_light",
+            "light": "@android:color/system_primary_light"
+        },
+        {
+            "unobfuscated_key": "ime_candidate_syllable_select_bg_color_dark",
+            "obfuscated_key": "ime_candidate_syllable_select_bg_color_dark",
+            "light": "@android:color/system_primary_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_09",
+            "obfuscated_key": "ime_skin_color_09",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_09",
+            "obfuscated_key": "ime_skin_dark_color_09",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_15",
+            "obfuscated_key": "ime_skin_color_15",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_15",
+            "obfuscated_key": "ime_skin_dark_color_15",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_BW_97",
+            "obfuscated_key": "ime_skin_BW_97",
+            "light": "@android:color/system_surface_container_light"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_BW_97",
+            "obfuscated_key": "ime_skin_dark_BW_97",
+            "light": "@android:color/system_surface_container_dark"
+        },
+        {
+            "unobfuscated_key": "ime_skin_toolbar_select_bg_color",
+            "obfuscated_key": "ime_skin_toolbar_select_bg_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_toolbar_select_bg_color",
+            "obfuscated_key": "ime_skin_dark_toolbar_select_bg_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "UN_BW_0_Alpha_0_5",
+            "obfuscated_key": "UN_BW_0_Alpha_0_5",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_white_border_color",
+            "obfuscated_key": "ime_skin_key_white_border_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_white_border_color",
+            "obfuscated_key": "ime_skin_dark_key_white_border_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_grey_border_color",
+            "obfuscated_key": "ime_skin_key_grey_border_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_grey_border_color",
+            "obfuscated_key": "ime_skin_dark_key_grey_border_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_green_border_color",
+            "obfuscated_key": "ime_skin_key_green_border_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_green_border_color",
+            "obfuscated_key": "ime_skin_dark_key_green_border_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_border",
+            "obfuscated_key": "ime_skin_color_btn_white_border",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_border",
+            "obfuscated_key": "ime_skin_dark_color_btn_white_border",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_grey_border",
+            "obfuscated_key": "ime_skin_color_btn_grey_border",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_grey_border",
+            "obfuscated_key": "ime_skin_dark_color_btn_grey_border",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_green_border",
+            "obfuscated_key": "ime_skin_color_btn_green_border",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_green_border",
+            "obfuscated_key": "ime_skin_dark_color_btn_green_border",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_white_shadow_color",
+            "obfuscated_key": "ime_skin_key_white_shadow_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_white_shadow_color",
+            "obfuscated_key": "ime_skin_dark_key_white_shadow_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_grey_shadow_color",
+            "obfuscated_key": "ime_skin_key_grey_shadow_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_grey_shadow_color",
+            "obfuscated_key": "ime_skin_dark_key_grey_shadow_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_key_green_shadow_color",
+            "obfuscated_key": "ime_skin_key_green_shadow_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_key_green_shadow_color",
+            "obfuscated_key": "ime_skin_dark_key_green_shadow_color",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_white_shadow",
+            "obfuscated_key": "ime_skin_color_btn_white_shadow",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_white_shadow",
+            "obfuscated_key": "ime_skin_dark_color_btn_white_shadow",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_grey_shadow",
+            "obfuscated_key": "ime_skin_color_btn_grey_shadow",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_grey_shadow",
+            "obfuscated_key": "ime_skin_dark_color_btn_grey_shadow",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_color_btn_green_shadow",
+            "obfuscated_key": "ime_skin_color_btn_green_shadow",
+            "light": "@android:color/transparent"
+        },
+        {
+            "unobfuscated_key": "ime_skin_dark_color_btn_green_shadow",
+            "obfuscated_key": "ime_skin_dark_color_btn_green_shadow",
+            "light": "@android:color/transparent"
+        }
+    ],
+    "theme_strings": [
+        {
+            "unobfuscated_key": "ime_about_copyright",
+            "obfuscated_key": "ime_about_copyright",
+            "value": "酷安@1e93d"
+        }
+    ],
+    "theme_drawables": [
+        {
+            "unobfuscated_key": "ime_logo_green ",
+            "obfuscated_key": "ime_logo_green ",
+            "file_path": "src/drawable/ime_logo_green.xml"
+        },
+        {
+            "unobfuscated_key": "ime_logo_green_dark",
+            "obfuscated_key": "ime_logo_green_dark",
+            "file_path": "src/drawable/ime_logo_green_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_app_plus_setup_sticker",
+            "obfuscated_key": "icon_app_plus_setup_sticker",
+            "file_path": "src/drawable/icon_app_plus_setup_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_app_plus_setup_sticker_dark",
+            "obfuscated_key": "icon_app_plus_setup_sticker_dark",
+            "file_path": "src/drawable/icon_app_plus_setup_sticker_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_candidate_tip_toast_show",
+            "obfuscated_key": "icon_candidate_tip_toast_show",
+            "file_path": "src/drawable/icon_candidate_tip_toast_show.xml"
+        },
+        {
+            "unobfuscated_key": "icon_custom_toolbar_sticker",
+            "obfuscated_key": "icon_custom_toolbar_sticker",
+            "file_path": "src/drawable/icon_custom_toolbar_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_emojibar_sticker",
+            "obfuscated_key": "icon_emojibar_sticker",
+            "file_path": "src/drawable/icon_emojibar_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_illustration_gif",
+            "obfuscated_key": "icon_illustration_gif",
+            "file_path": "src/drawable/icon_illustration_gif.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_back_pressed",
+            "obfuscated_key": "icon_keys_back_pressed",
+            "file_path": "src/drawable/icon_keys_back_pressed.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_back",
+            "obfuscated_key": "icon_keys_back",
+            "file_path": "src/drawable/icon_keys_back.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslock_dark",
+            "obfuscated_key": "icon_keys_capslock_dark",
+            "file_path": "src/drawable/icon_keys_capslock_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslock",
+            "obfuscated_key": "icon_keys_capslock",
+            "file_path": "src/drawable/icon_keys_capslock.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslocked_dark",
+            "obfuscated_key": "icon_keys_capslocked_dark",
+            "file_path": "src/drawable/icon_keys_capslocked_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_capslocked",
+            "obfuscated_key": "icon_keys_capslocked",
+            "file_path": "src/drawable/icon_keys_capslocked.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_delete_dark",
+            "obfuscated_key": "icon_keys_delete_dark",
+            "file_path": "src/drawable/icon_keys_delete_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_delete",
+            "obfuscated_key": "icon_keys_delete",
+            "file_path": "src/drawable/icon_keys_delete.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_delete_pressed",
+            "obfuscated_key": "icon_keys_delete_pressed",
+            "file_path": "src/drawable/icon_keys_delete_pressed.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_emoji_dark",
+            "obfuscated_key": "icon_keys_emoji_dark",
+            "file_path": "src/drawable/icon_keys_emoji_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_emoji",
+            "obfuscated_key": "icon_keys_emoji",
+            "file_path": "src/drawable/icon_keys_emoji.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_outlinedcapslock_dark",
+            "obfuscated_key": "icon_keys_outlinedcapslock_dark",
+            "file_path": "src/drawable/icon_keys_outlinedcapslock_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_outlinedcapslock",
+            "obfuscated_key": "icon_keys_outlinedcapslock",
+            "file_path": "src/drawable/icon_keys_outlinedcapslock.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_voice_dark",
+            "obfuscated_key": "icon_keys_voice_dark",
+            "file_path": "src/drawable/icon_keys_voice_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_keys_voice",
+            "obfuscated_key": "icon_keys_voice",
+            "file_path": "src/drawable/icon_keys_voice.xml"
+        },
+        {
+            "unobfuscated_key": "icon_remarks_translate_dark",
+            "obfuscated_key": "icon_remarks_translate_dark",
+            "file_path": "src/drawable/icon_remarks_translate_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_remarks_translate",
+            "obfuscated_key": "icon_remarks_translate",
+            "file_path": "src/drawable/icon_remarks_translate.xml"
+        },
+        {
+            "unobfuscated_key": "icon_toolbar_sticker",
+            "obfuscated_key": "icon_toolbar_sticker",
+            "file_path": "src/drawable/icon_toolbar_sticker.xml"
+        },
+        {
+            "unobfuscated_key": "icon_translate_arrow_dark",
+            "obfuscated_key": "icon_translate_arrow_dark",
+            "file_path": "src/drawable/icon_translate_arrow_dark.xml"
+        },
+        {
+            "unobfuscated_key": "icon_translate_arrow",
+            "obfuscated_key": "icon_translate_arrow",
+            "file_path": "src/drawable/icon_translate_arrow.xml"
+        },
+        {
+            "unobfuscated_key": "icon_voice_sound",
+            "obfuscated_key": "icon_voice_sound",
+            "file_path": "src/drawable/icon_voice_sound.xml"
+        }
+    ]
+}
