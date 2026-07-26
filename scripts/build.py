@@ -1,15 +1,5 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-
-"""
-微信输入法 Monet Overlay 自动化适配与构建工作流 (GitHub Actions Linux 专用)
-
-阶段划分:
-  - Phase 1: 检查更新、下载 APK 并使用 Apktool 解包
-  - Phase 2: 提取 Smali 与 public.xml 中的 Key-ID 映射，生成版本 JSON 配置
-  - Phase 3: 生成 values/colors.xml 与 values-night/colors.xml，并编译 Overlay APK
-  - Phase 4: 组装模块结构并生成 Magisk/KernelSU 刷机 ZIP 包
-"""
+"""构建微信输入法 Monet Overlay 模块。"""
 
 import hashlib
 import json
@@ -25,14 +15,9 @@ from pathlib import Path
 from xml.sax.saxutils import escape
 from zoneinfo import ZoneInfo
 
-# ==============================================================================
-# 1. 常量与路径配置
-# ==============================================================================
-
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
 
-# 目录规划
 CONFIG_DIR = PROJECT_ROOT / "config"
 OVERLAY_DIR = PROJECT_ROOT / "overlay"
 OUT_DIR = PROJECT_ROOT / "out"
@@ -41,26 +26,19 @@ TEMPLATE_DIR = PROJECT_ROOT / "module_template"
 DECOMPILE_DIR = OUT_DIR / "decompiled_apk"
 BUILD_METADATA_PATH = OUT_DIR / "internal" / "build-metadata.json"
 
-# 关键文件
 BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
 MODULE_CONFIG_PATH = CONFIG_DIR / "module.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
 HLD_PACKAGE_PATH = Path("com/tencent/wetype/plugin/hld")
 
-# 远程源
 APK_URL = "https://z.weixin.qq.com/android/download?channel=latest"
 CHANGELOG_URL = "https://z.weixin.qq.com/web/changelog/android"
 
-# 模块元数据
 MODULE_ID = "Wetype_Monet"
 MODULE_NAME = "微信输入法 Monet"
 MODULE_AUTHOR = "酷安@1e93d"
 MODULE_DESCRIPTION = "为微信输入法提供 Monet 动态色彩主题。"
 UPDATE_JSON_URL = ""
-
-# ==============================================================================
-# 2. Linux 环境工具链定位与 Git 辅助函数
-# ==============================================================================
 
 def get_git_info() -> tuple[str, str]:
     """获取当前仓库提交次数与 Short Hash"""
@@ -152,7 +130,13 @@ def find_sdk_tools() -> tuple[str, str, str, str]:
     if not android_jar or not os.path.exists(android_jar):
         raise RuntimeError("未找到 android.jar！请确认已安装 Android SDK 或手动配置 ANDROID_JAR_PATH 环境变量。")
 
-    print(f"[+] 成功定位工具链:\n    - AAPT2: {aapt2}\n    - ZIPALIGN: {zipalign}\n    - APKSIGNER: {apksigner}\n    - ANDROID_JAR: {android_jar}")
+    print(
+        "[+] 成功定位工具链:"
+        f"\n    - AAPT2: {aapt2}"
+        f"\n    - ZIPALIGN: {zipalign}"
+        f"\n    - APKSIGNER: {apksigner}"
+        f"\n    - ANDROID_JAR: {android_jar}"
+    )
     return aapt2, zipalign, apksigner, android_jar
 
 def ensure_debug_keystore() -> Path:
@@ -180,10 +164,6 @@ def ensure_debug_keystore() -> Path:
     ]
     subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     return keystore
-
-# ==============================================================================
-# 3. 阶段一：网络获取、SHA256 校验与 Apktool 解包
-# ==============================================================================
 
 def calculate_sha256(file_path: Path) -> str:
     """计算指定文件的 SHA256"""
@@ -281,10 +261,6 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]] | None:
     final_changelog = changelog if (not web_version or web_version == final_apk_name) else []
 
     return new_sha256, apk_code, final_apk_name, release_date, final_changelog
-
-# ==============================================================================
-# 4. 阶段二：限定 hld 根目录的资源映射
-# ==============================================================================
 
 def iter_hld_root_smali_files():
     """仅返回各 Smali 分包中 hld 根目录的直接类文件。"""
@@ -401,9 +377,15 @@ def generate_version_config(
 
     base_config = json.loads(BASE_CONFIG_PATH.read_text(encoding="utf-8"))
     key_to_id = parse_hld_key_to_id()
-    updated_colors = resolve_theme_resources(base_config.get("theme_colors", []), "color", key_to_id, require_mapping=False)
-    updated_strings = resolve_theme_resources(base_config.get("theme_strings", []), "string", key_to_id, require_mapping=False)
-    updated_drawables = resolve_theme_resources(base_config.get("theme_drawables", []), "drawable", key_to_id, require_mapping=True)
+    updated_colors = resolve_theme_resources(
+        base_config.get("theme_colors", []), "color", key_to_id, require_mapping=False
+    )
+    updated_strings = resolve_theme_resources(
+        base_config.get("theme_strings", []), "string", key_to_id, require_mapping=False
+    )
+    updated_drawables = resolve_theme_resources(
+        base_config.get("theme_drawables", []), "drawable", key_to_id, require_mapping=True
+    )
 
     safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
@@ -426,13 +408,15 @@ def generate_version_config(
     print(f"[+] 版本 JSON 配置文件生成完毕: {config_path}")
     return config_path
 
-# ==============================================================================
-# 5. 阶段三：生成 Overlay 资源
-# ==============================================================================
-
 def write_xml_resource_file(path: Path, entries: list[str]):
     path.parent.mkdir(parents=True, exist_ok=True)
-    lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>', *entries, '</resources>', '']
+    lines = [
+        '<?xml version="1.0" encoding="utf-8"?>',
+        "<resources>",
+        *entries,
+        "</resources>",
+        "",
+    ]
     path.write_text("\n".join(lines), encoding="utf-8")
 
 
@@ -468,7 +452,9 @@ def sync_src_resources(config_file: Path):
             raise FileNotFoundError(f"[!] drawable '{raw_key}' 的源文件不存在: {source_path}")
         if not source_path.suffix:
             raise ValueError(f"[!] drawable '{raw_key}' 的源文件没有扩展名: {source_path}")
-        destination = drawable_dir / f"{item['obfuscated_key']}{source_path.suffix.lower()}"
+        destination = drawable_dir / (
+            f"{item['obfuscated_key']}{source_path.suffix.lower()}"
+        )
         shutil.copy2(source_path, destination)
 
     print(f"[+] Overlay 资源已同步至: {res_dir}")
@@ -488,7 +474,6 @@ def build_overlay_apk():
     res_dir = OVERLAY_DIR / "res"
     manifest_xml = OVERLAY_DIR / "AndroidManifest.xml"
 
-    # 1. Compile
     print("[1/4] 编译资源 (aapt2 compile)...")
     res = subprocess.run(
         [str(aapt2), "compile", "--dir", str(res_dir), "-o", str(compiled_zip)],
@@ -497,7 +482,6 @@ def build_overlay_apk():
     if res.returncode != 0:
         raise RuntimeError(f"aapt2 compile 失败:\n{res.stderr or res.stdout}")
 
-    # 2. Link
     print("[2/4] 链接 APK (aapt2 link)...")
     link_cmd = [
         str(aapt2), "link",
@@ -513,13 +497,11 @@ def build_overlay_apk():
     if res.returncode != 0:
         raise RuntimeError(f"aapt2 link 失败:\n{res.stderr or res.stdout}")
 
-    # 3. Zipalign
     print("[3/4] 4 字节对齐 (zipalign)...")
     if aligned_apk.exists():
         aligned_apk.unlink()
     subprocess.run([str(zipalign), "-p", "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
 
-    # 4. Apksigner
     print("[4/4] 使用 Debug Key 进行 V2 签名 (apksigner)...")
     keystore = ensure_debug_keystore()
     if final_apk.exists():
@@ -545,10 +527,6 @@ def build_overlay_apk():
             tmp.unlink()
 
     print(f"[+] Overlay APK 生成成功 -> {final_apk}")
-
-# ==============================================================================
-# 6. 阶段四：模块组装与打包
-# ==============================================================================
 
 def prepare_template():
     """同步模块模板结构"""
@@ -589,7 +567,11 @@ def create_module_zip(version_name: str, apk_name: str, apk_code: str) -> Path:
     print("[*] 打包 Magisk/KernelSU 刷机 ZIP 包...")
     safe_apk_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
     safe_apk_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
-    target_version = f"wetype-{safe_apk_name}({safe_apk_code})" if safe_apk_code else f"wetype-{safe_apk_name}"
+    target_version = (
+        f"wetype-{safe_apk_name}({safe_apk_code})"
+        if safe_apk_code
+        else f"wetype-{safe_apk_name}"
+    )
     zip_filename = f"{MODULE_ID}_{version_name}_{target_version}.zip"
     zip_path = OUT_DIR / zip_filename
 
@@ -623,10 +605,6 @@ def write_build_metadata(
         json.dumps(metadata, ensure_ascii=False, indent=4) + "\n", encoding="utf-8"
     )
 
-# ==============================================================================
-# 7. 主流程执行控制
-# ==============================================================================
-
 def main():
     print("======================================================")
     print("   微信输入法 Monet Overlay 自动化适配与构建工作流  ")
@@ -636,25 +614,21 @@ def main():
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
     try:
-        # Phase 1: 检查更新 & 检索/解包 APK
         print("[+] ===== 阶段 1: 检查更新 & 检索/解包 APK =====")
         build_input = download_and_decompile_apk()
         if build_input is None:
             return
         sha256_str, apk_code, apk_name, release_date, changelog = build_input
 
-        # Phase 2: 解析 ID 映射 & 生成配置
         print("\n[+] ===== 阶段 2: 解析 ID 映射 & 生成配置 =====")
         config_path = generate_version_config(sha256_str, apk_code, apk_name, release_date, changelog)
 
-        # Phase 3: 准备资源 & 编译 Overlay
         print("\n[+] ===== 阶段 3: 生成 Overlay 资源并编译签名 APK =====")
         sync_src_resources(config_path)
         prepare_template()
         module_version, version_code = generate_module_prop()
         build_overlay_apk()
 
-        # Phase 4: 打包 Magisk/KernelSU 模块 ZIP
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
         zip_path = create_module_zip(module_version, apk_name, apk_code)
         write_build_metadata(module_version, version_code, apk_name, apk_code, config_path, zip_path)
