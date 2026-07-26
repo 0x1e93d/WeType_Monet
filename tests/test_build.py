@@ -22,16 +22,18 @@ class BuildMappingTests(unittest.TestCase):
             "PROJECT_ROOT": build.PROJECT_ROOT,
             "CONFIG_DIR": build.CONFIG_DIR,
             "OUT_DIR": build.OUT_DIR,
-            "SRC_DIR": build.SRC_DIR,
+            "OVERLAY_DIR": build.OVERLAY_DIR,
             "DECOMPILE_DIR": build.DECOMPILE_DIR,
             "BASE_CONFIG_PATH": build.BASE_CONFIG_PATH,
+            "MODULE_CONFIG_PATH": build.MODULE_CONFIG_PATH,
         }
         build.PROJECT_ROOT = self.root
         build.CONFIG_DIR = self.root / "config"
         build.OUT_DIR = self.root / "out"
-        build.SRC_DIR = self.root / "src"
+        build.OVERLAY_DIR = self.root / "overlay"
         build.DECOMPILE_DIR = build.OUT_DIR / "decompiled_apk"
         build.BASE_CONFIG_PATH = build.CONFIG_DIR / "base.json"
+        build.MODULE_CONFIG_PATH = build.CONFIG_DIR / "module.json"
         build.CONFIG_DIR.mkdir(parents=True)
         build.OUT_DIR.mkdir(parents=True)
         self._write_fixture_apk()
@@ -74,7 +76,7 @@ class BuildMappingTests(unittest.TestCase):
         (nested / "ignored.smali").write_text(
             '.field public static final ignored_key:I = 0x7f060002', encoding="utf-8"
         )
-        source_drawable = self.root / "src" / "drawable" / "source.xml"
+        source_drawable = self.root / "overlay" / "assets" / "drawable" / "source.xml"
         source_drawable.parent.mkdir(parents=True)
         source_drawable.write_text('<vector xmlns:android="http://schemas.android.com/apk/res/android" />', encoding="utf-8")
 
@@ -90,7 +92,7 @@ class BuildMappingTests(unittest.TestCase):
             ],
             "theme_drawables": drawables
             if drawables is not None
-            else [{"key": "drawable_key", "file_path": "src/drawable/source.xml", "description": "drawable"}],
+            else [{"key": "drawable_key", "file_path": "overlay/assets/drawable/source.xml", "description": "drawable"}],
         }
         build.BASE_CONFIG_PATH.write_text(json.dumps(payload), encoding="utf-8")
 
@@ -105,22 +107,30 @@ class BuildMappingTests(unittest.TestCase):
         self.assertEqual(payload["theme_colors"][0]["obfuscated_key"], "a")
         self.assertEqual(payload["theme_strings"][0]["obfuscated_key"], "b")
         self.assertEqual(payload["theme_drawables"][0]["obfuscated_key"], "c")
-        self.assertEqual(len(payload["theme_colors"]), 1)
+        self.assertEqual(len(payload["theme_colors"]), 2)
         self.assertEqual(len(payload["theme_strings"]), 1)
         self.assertNotIn("ignored_key", build.parse_hld_key_to_id())
-        self.assertIn('<color name="a">#123456</color>', (build.SRC_DIR / "res" / "values" / "colors.xml").read_text(encoding="utf-8"))
-        self.assertIn('<string name="b">A &amp; B</string>', (build.SRC_DIR / "res" / "values" / "strings.xml").read_text(encoding="utf-8"))
-        self.assertTrue((build.SRC_DIR / "res" / "drawable" / "c.xml").is_file())
+        self.assertIn('<color name="a">#123456</color>', (build.OVERLAY_DIR / "res" / "values" / "colors.xml").read_text(encoding="utf-8"))
+        self.assertIn('<color name="missing_color">#000000</color>', (build.OVERLAY_DIR / "res" / "values" / "colors.xml").read_text(encoding="utf-8"))
+        self.assertIn('<string name="b">A &amp; B</string>', (build.OVERLAY_DIR / "res" / "values" / "strings.xml").read_text(encoding="utf-8"))
+        self.assertTrue((build.OVERLAY_DIR / "res" / "drawable" / "c.xml").is_file())
         self.assertIn("missing_color", output.getvalue())
         self.assertIn("missing_string", output.getvalue())
 
     def test_fails_for_unmapped_drawable(self):
-        self._write_base_config(drawables=[{"key": "missing_drawable", "file_path": "src/drawable/source.xml"}])
+        self._write_base_config(drawables=[{"key": "missing_drawable", "file_path": "overlay/assets/drawable/source.xml"}])
         with self.assertRaisesRegex(RuntimeError, "missing_drawable"):
             build.generate_version_config("hash", "1", "1.0", "2026-01-01", [])
 
+    def test_latest_hash_ignores_base_and_module_config(self):
+        (build.CONFIG_DIR / "1.0(1).json").write_text('{"sha256": "expected"}', encoding="utf-8")
+        build.BASE_CONFIG_PATH.write_text("{}", encoding="utf-8")
+        build.MODULE_CONFIG_PATH.write_text('{"version": "1.0.0"}', encoding="utf-8")
+
+        self.assertEqual(build.get_latest_sha256(), ("1.0(1).json", "expected"))
+
     def test_fails_for_missing_drawable_source(self):
-        self._write_base_config(drawables=[{"key": "drawable_key", "file_path": "src/drawable/missing.xml"}])
+        self._write_base_config(drawables=[{"key": "drawable_key", "file_path": "overlay/assets/drawable/missing.xml"}])
         config_path = build.generate_version_config("hash", "1", "1.0", "2026-01-01", [])
         with self.assertRaisesRegex(FileNotFoundError, "源文件不存在"):
             build.sync_src_resources(config_path)

@@ -1,0 +1,138 @@
+name: Build and Release Wetype Monet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release.yml"
+      - "config/base.json"
+      - "config/module.json"
+      - "module_template/**"
+      - "overlay/**"
+      - "scripts/**"
+      - "tests/**"
+  schedule:
+    # UTC 22:00 is 06:00 in Asia/Shanghai on the following day.
+    - cron: "0 22 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: wetype-monet-release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run mapping tests
+        run: python -m unittest discover -s tests -v
+      - name: Check build script syntax
+        run: python -B -c "from pathlib import Path; compile(Path('scripts/build.py').read_text(encoding='utf-8'), 'scripts/build.py', 'exec')"
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@v3
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zipalign apksigner wget
+          APKTOOL_VER="2.9.3"
+          sudo wget https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool -O /usr/local/bin/apktool
+          sudo wget https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VER}/apktool_${APKTOOL_VER}.jar -O /usr/local/bin/apktool.jar
+          sudo chmod +x /usr/local/bin/apktool /usr/local/bin/apktool.jar
+
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Bump module patch version for source changes
+        if: github.event_name == 'push'
+        run: python scripts/version.py bump-patch
+
+      - name: Build module
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          VERSION_CODE: ${{ github.run_number }}
+          FORCE_BUILD: ${{ github.event_name != 'schedule' }}
+        run: python scripts/build.py
+
+      - name: Read build metadata
+        id: metadata
+        run: |
+          if [ ! -f out/build-metadata.json ]; then
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "built=true" >> "$GITHUB_OUTPUT"
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          metadata = json.loads(Path("out/build-metadata.json").read_text(encoding="utf-8"))
+          for key, value in metadata.items():
+              print(f"{key}={value}")
+          PY
+
+      - name: Commit generated configuration and version
+        if: steps.metadata.outputs.built == 'true'
+        run: |
+          git add config/*.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "chore(release): update module and target configuration"
+          git push
+
+      - name: Upload build artifacts
+        if: steps.metadata.outputs.built == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: wetype-monet-${{ github.run_number }}
+          path: |
+            out/*.zip
+            out/*.json
+
+      - name: Create release
+        if: steps.metadata.outputs.built == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: 微信输入法 Monet ${{ steps.metadata.outputs.module_version }}
+          body: |
+            ## 微信输入法 Monet 自动适配
+
+            - 模块版本：${{ steps.metadata.outputs.module_version }}
+            - 发布序号：${{ steps.metadata.outputs.version_code }}
+            - 适配版本：微信输入法 ${{ steps.metadata.outputs.apk_name }} (${{ steps.metadata.outputs.apk_code }})
+            - 构建时间：${{ steps.metadata.outputs.build_time }}
+
+            ### 产物
+            - `${{ steps.metadata.outputs.zip_file }}`：Magisk/KernelSU Overlay 模块
+            - `${{ steps.metadata.outputs.config_file }}`：当前版本资源映射配置
+          files: |
+            out/*.zip
+            out/*.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

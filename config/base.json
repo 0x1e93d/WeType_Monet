@@ -1,4 +1,6 @@
 {
+    "schema_version": 1,
+    "target_package": "com.tencent.wetype",
     "theme_colors": [
         {
             "key": "White",
@@ -511,147 +513,147 @@
     "theme_drawables": [
         {
             "key": "ime_logo_green",
-            "file_path": "src/drawable/ime_logo_green.xml",
+            "file_path": "overlay/assets/drawable/ime_logo_green.xml",
             "description": "工具栏 Logo 绿色"
         },
         {
             "key": "ime_logo_green_dark",
-            "file_path": "src/drawable/ime_logo_green_dark.xml",
+            "file_path": "overlay/assets/drawable/ime_logo_green_dark.xml",
             "description": "工具栏 Logo 绿色（深色）"
         },
         {
             "key": "icon_app_plus_setup_sticker",
-            "file_path": "src/drawable/icon_app_plus_setup_sticker.xml",
+            "file_path": "overlay/assets/drawable/icon_app_plus_setup_sticker.xml",
             "description": ""
         },
         {
             "key": "icon_app_plus_setup_sticker_dark",
-            "file_path": "src/drawable/icon_app_plus_setup_sticker_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_app_plus_setup_sticker_dark.xml",
             "description": ""
         },
         {
             "key": "icon_candidate_tip_toast_show",
-            "file_path": "src/drawable/icon_candidate_tip_toast_show.xml",
+            "file_path": "overlay/assets/drawable/icon_candidate_tip_toast_show.xml",
             "description": ""
         },
         {
             "key": "icon_custom_toolbar_sticker",
-            "file_path": "src/drawable/icon_custom_toolbar_sticker.xml",
+            "file_path": "overlay/assets/drawable/icon_custom_toolbar_sticker.xml",
             "description": ""
         },
         {
             "key": "icon_emojibar_sticker",
-            "file_path": "src/drawable/icon_emojibar_sticker.xml",
+            "file_path": "overlay/assets/drawable/icon_emojibar_sticker.xml",
             "description": ""
         },
         {
             "key": "icon_illustration_gif",
-            "file_path": "src/drawable/icon_illustration_gif.xml",
+            "file_path": "overlay/assets/drawable/icon_illustration_gif.xml",
             "description": ""
         },
         {
             "key": "icon_keys_back_pressed",
-            "file_path": "src/drawable/icon_keys_back_pressed.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_back_pressed.xml",
             "description": ""
         },
         {
             "key": "icon_keys_back",
-            "file_path": "src/drawable/icon_keys_back.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_back.xml",
             "description": ""
         },
         {
             "key": "icon_keys_capslock_dark",
-            "file_path": "src/drawable/icon_keys_capslock_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_capslock_dark.xml",
             "description": ""
         },
         {
             "key": "icon_keys_capslock",
-            "file_path": "src/drawable/icon_keys_capslock.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_capslock.xml",
             "description": ""
         },
         {
             "key": "icon_keys_capslocked_dark",
-            "file_path": "src/drawable/icon_keys_capslocked_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_capslocked_dark.xml",
             "description": ""
         },
         {
             "key": "icon_keys_capslocked",
-            "file_path": "src/drawable/icon_keys_capslocked.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_capslocked.xml",
             "description": ""
         },
         {
             "key": "icon_keys_delete_dark",
-            "file_path": "src/drawable/icon_keys_delete_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_delete_dark.xml",
             "description": ""
         },
         {
             "key": "icon_keys_delete",
-            "file_path": "src/drawable/icon_keys_delete.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_delete.xml",
             "description": ""
         },
         {
             "key": "icon_keys_delete_pressed",
-            "file_path": "src/drawable/icon_keys_delete_pressed.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_delete_pressed.xml",
             "description": ""
         },
         {
             "key": "icon_keys_emoji_dark",
-            "file_path": "src/drawable/icon_keys_emoji_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_emoji_dark.xml",
             "description": ""
         },
         {
             "key": "icon_keys_emoji",
-            "file_path": "src/drawable/icon_keys_emoji.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_emoji.xml",
             "description": ""
         },
         {
             "key": "icon_keys_outlinedcapslock_dark",
-            "file_path": "src/drawable/icon_keys_outlinedcapslock_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_outlinedcapslock_dark.xml",
             "description": ""
         },
         {
             "key": "icon_keys_outlinedcapslock",
-            "file_path": "src/drawable/icon_keys_outlinedcapslock.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_outlinedcapslock.xml",
             "description": ""
         },
         {
             "key": "icon_keys_voice_dark",
-            "file_path": "src/drawable/icon_keys_voice_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_voice_dark.xml",
             "description": ""
         },
         {
             "key": "icon_keys_voice",
-            "file_path": "src/drawable/icon_keys_voice.xml",
+            "file_path": "overlay/assets/drawable/icon_keys_voice.xml",
             "description": ""
         },
         {
             "key": "icon_remarks_translate_dark",
-            "file_path": "src/drawable/icon_remarks_translate_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_remarks_translate_dark.xml",
             "description": ""
         },
         {
             "key": "icon_remarks_translate",
-            "file_path": "src/drawable/icon_remarks_translate.xml",
+            "file_path": "overlay/assets/drawable/icon_remarks_translate.xml",
             "description": ""
         },
         {
             "key": "icon_toolbar_sticker",
-            "file_path": "src/drawable/icon_toolbar_sticker.xml",
+            "file_path": "overlay/assets/drawable/icon_toolbar_sticker.xml",
             "description": ""
         },
         {
             "key": "icon_translate_arrow_dark",
-            "file_path": "src/drawable/icon_translate_arrow_dark.xml",
+            "file_path": "overlay/assets/drawable/icon_translate_arrow_dark.xml",
             "description": ""
         },
         {
             "key": "icon_translate_arrow",
-            "file_path": "src/drawable/icon_translate_arrow.xml",
+            "file_path": "overlay/assets/drawable/icon_translate_arrow.xml",
             "description": ""
         },
         {
             "key": "icon_voice_sound",
-            "file_path": "src/drawable/icon_voice_sound.xml",
+            "file_path": "overlay/assets/drawable/icon_voice_sound.xml",
             "description": ""
         }
     ],

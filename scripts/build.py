@@ -33,7 +33,7 @@ PROJECT_ROOT = SCRIPT_DIR.parent
 
 # 目录规划
 CONFIG_DIR = PROJECT_ROOT / "config"
-SRC_DIR = PROJECT_ROOT / "src"
+OVERLAY_DIR = PROJECT_ROOT / "overlay"
 OUT_DIR = PROJECT_ROOT / "out"
 BUILD_TMP_DIR = OUT_DIR / "build_tmp"
 TEMPLATE_DIR = PROJECT_ROOT / "module_template"
@@ -41,6 +41,7 @@ DECOMPILE_DIR = OUT_DIR / "decompiled_apk"
 
 # 关键文件
 BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
+MODULE_CONFIG_PATH = CONFIG_DIR / "module.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
 HLD_PACKAGE_PATH = Path("com/tencent/wetype/plugin/hld")
 
@@ -53,7 +54,6 @@ MODULE_ID = "Wetype_Monet"
 MODULE_NAME = "微信输入法 Monet"
 MODULE_AUTHOR = "酷安@1e93d"
 MODULE_DESCRIPTION = "为微信输入法提供 Monet 动态色彩主题。"
-BASE_VERSION = "v1.0.0"
 UPDATE_JSON_URL = ""
 
 # ==============================================================================
@@ -74,6 +74,17 @@ def get_git_info() -> tuple[str, str]:
         return count or "1", git_hash or "dev"
     except Exception:
         return "1", "dev"
+
+
+def load_module_config() -> dict[str, str]:
+    """读取模块展示版本与静态元数据。"""
+    if not MODULE_CONFIG_PATH.exists():
+        raise FileNotFoundError(f"[!] 找不到模块配置文件: {MODULE_CONFIG_PATH}")
+    config = json.loads(MODULE_CONFIG_PATH.read_text(encoding="utf-8"))
+    version = str(config.get("version", "")).strip()
+    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
+        raise ValueError("[!] module.json 的 version 必须为 MAJOR.MINOR.PATCH 格式")
+    return config
 
 def find_sdk_tools() -> tuple[str, str, str, str]:
     """自动查找 aapt2, zipalign, apksigner 与 android.jar 路径"""
@@ -178,7 +189,8 @@ def calculate_sha256(file_path: Path) -> str:
 
 def get_latest_sha256() -> tuple[str | None, str | None]:
     """获取 config 目录下历史记录中最新的 JSON SHA256"""
-    json_files = [f for f in CONFIG_DIR.glob("*.json") if f.name != BASE_CONFIG_PATH.name]
+    excluded_files = {BASE_CONFIG_PATH.name, MODULE_CONFIG_PATH.name}
+    json_files = [f for f in CONFIG_DIR.glob("*.json") if f.name not in excluded_files]
     if not json_files:
         return None, None
     latest_file = max(json_files, key=lambda f: f.stat().st_mtime)
@@ -217,7 +229,7 @@ def fetch_changelog_info() -> tuple[str, str, list[str]]:
         print(f"[!] 抓取官网日志失败: {e}")
         return "", "", []
 
-def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
+def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]] | None:
     """下载并解包 APK"""
     web_version, release_date, changelog = fetch_changelog_info()
 
@@ -230,9 +242,12 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
     print(f"[+] 下载完成，当前 APK SHA256: {new_sha256}")
 
     latest_file, last_sha256 = get_latest_sha256()
-    if last_sha256 and last_sha256.lower() == new_sha256.lower():
-        print(f"[=] 版本哈希与本地历史记录 ({latest_file}) 一致，无新更新，工作流终止。")
-        sys.exit(0)
+    force_build = os.environ.get("FORCE_BUILD", "").lower() in {"1", "true", "yes"}
+    if last_sha256 and last_sha256.lower() == new_sha256.lower() and not force_build:
+        print(f"[=] 版本哈希与本地历史记录 ({latest_file}) 一致，无需构建。")
+        return None
+    if force_build and last_sha256 and last_sha256.lower() == new_sha256.lower():
+        print("[*] 上游 APK 未变化，按 FORCE_BUILD 继续构建。")
 
     print(f"[*] 开始使用 Apktool 解包 APK -> {DECOMPILE_DIR}")
     if DECOMPILE_DIR.exists():
@@ -340,6 +355,9 @@ def resolve_theme_resources(
 
         resource_id = key_to_id.get(raw_key)
         obfuscated_key = id_to_obfuscated.get(resource_id, "") if resource_id else ""
+        if not obfuscated_key and resource_type == "color":
+            print(f"[!] 警告: color '{raw_key}' 未在 hld 根目录映射到目标资源，保留未混淆名称")
+            obfuscated_key = raw_key
         if not obfuscated_key:
             message = f"{resource_type} '{raw_key}' 未在 hld 根目录映射到目标资源"
             if require_mapping:
@@ -415,7 +433,7 @@ def write_xml_resource_file(path: Path, entries: list[str]):
 def sync_src_resources(config_file: Path):
     """将版本配置转换为 colors、strings 和改名后的 Drawable 资源。"""
     config_data = json.loads(config_file.read_text(encoding="utf-8"))
-    res_dir = SRC_DIR / "res"
+    res_dir = OVERLAY_DIR / "res"
     day_entries: list[str] = []
     night_entries: list[str] = []
     string_entries: list[str] = []
@@ -461,8 +479,8 @@ def build_overlay_apk():
     aligned_apk = OUT_DIR / "aligned.apk"
     final_apk = target_apk_dir / "WetypeMonet.apk"
 
-    res_dir = SRC_DIR / "res"
-    manifest_xml = SRC_DIR / "AndroidManifest.xml"
+    res_dir = OVERLAY_DIR / "res"
+    manifest_xml = OVERLAY_DIR / "AndroidManifest.xml"
 
     # 1. Compile
     print("[1/4] 编译资源 (aapt2 compile)...")
@@ -535,15 +553,12 @@ def prepare_template():
     if TEMPLATE_DIR.exists():
         shutil.copytree(TEMPLATE_DIR, BUILD_TMP_DIR, dirs_exist_ok=True)
 
-def generate_module_prop(version_name_override: str, version_code_override: str) -> str:
+def generate_module_prop() -> tuple[str, str]:
     """生成模块属性清单 module.prop"""
-    git_count, git_hash = get_git_info()
-    
-    v_code = (version_code_override or os.environ.get("VERSION_CODE", git_count)).strip()
-    v_name_raw = version_name_override.strip() if version_name_override else ""
-    
-    version_code = v_code
-    version_name = f"{BASE_VERSION}-{v_name_raw}" if v_name_raw else f"{BASE_VERSION}-{git_hash}"
+    git_count, _ = get_git_info()
+    module_config = load_module_config()
+    version_name = f"v{module_config['version']}"
+    version_code = os.environ.get("VERSION_CODE", git_count).strip() or git_count
 
     build_time = datetime.now().strftime("%Y-%m-%d %H:%M")
     description = f"{MODULE_DESCRIPTION} [构建时间: {build_time}]"
@@ -561,12 +576,15 @@ def generate_module_prop(version_name_override: str, version_code_override: str)
 
     (BUILD_TMP_DIR / "module.prop").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"[+] module.prop 生成完成 (Version: {version_name}, Code: {version_code})")
-    return version_name
+    return version_name, version_code
 
-def create_module_zip(version_name: str):
+def create_module_zip(version_name: str, apk_name: str, apk_code: str) -> Path:
     """打包输出 Magisk/KernelSU ZIP"""
     print("[*] 打包 Magisk/KernelSU 刷机 ZIP 包...")
-    zip_filename = f"{MODULE_ID}_{version_name}.zip"
+    safe_apk_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
+    safe_apk_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
+    target_version = f"wetype-{safe_apk_name}({safe_apk_code})" if safe_apk_code else f"wetype-{safe_apk_name}"
+    zip_filename = f"{MODULE_ID}_{version_name}_{target_version}.zip"
     zip_path = OUT_DIR / zip_filename
 
     if zip_path.exists():
@@ -579,6 +597,24 @@ def create_module_zip(version_name: str):
                 zf.write(file_path, arcname)
 
     print(f"[+] 刷机包构建成功: {zip_path}")
+    return zip_path
+
+
+def write_build_metadata(
+    module_version: str, version_code: str, apk_name: str, apk_code: str, config_path: Path, zip_path: Path
+):
+    metadata = {
+        "module_version": module_version,
+        "version_code": version_code,
+        "apk_name": apk_name,
+        "apk_code": apk_code,
+        "config_file": config_path.name,
+        "zip_file": zip_path.name,
+        "build_time": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z"),
+    }
+    (OUT_DIR / "build-metadata.json").write_text(
+        json.dumps(metadata, ensure_ascii=False, indent=4) + "\n", encoding="utf-8"
+    )
 
 # ==============================================================================
 # 7. 主流程执行控制
@@ -595,7 +631,10 @@ def main():
     try:
         # Phase 1: 检查更新 & 检索/解包 APK
         print("[+] ===== 阶段 1: 检查更新 & 检索/解包 APK =====")
-        sha256_str, apk_code, apk_name, release_date, changelog = download_and_decompile_apk()
+        build_input = download_and_decompile_apk()
+        if build_input is None:
+            return
+        sha256_str, apk_code, apk_name, release_date, changelog = build_input
 
         # Phase 2: 解析 ID 映射 & 生成配置
         print("\n[+] ===== 阶段 2: 解析 ID 映射 & 生成配置 =====")
@@ -605,12 +644,13 @@ def main():
         print("\n[+] ===== 阶段 3: 生成 Overlay 资源并编译签名 APK =====")
         sync_src_resources(config_path)
         prepare_template()
-        built_vname = generate_module_prop(apk_name, apk_code)
+        module_version, version_code = generate_module_prop()
         build_overlay_apk()
 
         # Phase 4: 打包 Magisk/KernelSU 模块 ZIP
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
-        create_module_zip(built_vname)
+        zip_path = create_module_zip(module_version, apk_name, apk_code)
+        write_build_metadata(module_version, version_code, apk_name, apk_code, config_path, zip_path)
 
         print("\n[✓] 所有步骤全流程顺利执行完毕！")
 
