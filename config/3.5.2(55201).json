@@ -622,6 +622,12 @@
             "value": "微信输入法 Monet"
         },
         {
+            "unobfuscated_key": "ime_custom_phrase_tips",
+            "obfuscated_key": "e0",
+            "description": "自定义短语提示",
+            "value": ""
+        },
+        {
             "unobfuscated_key": "ime_about_copyright_en",
             "obfuscated_key": "ce",
             "description": "英文版权信息",
