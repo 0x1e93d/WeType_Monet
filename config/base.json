@@ -665,8 +665,13 @@
     "theme_strings": [
         {
             "key": "ime_about_copyright",
-            "value": "酷安@1e93d",
+            "value": "微信输入法 Monet",
             "description": "版权信息"
+        },
+        {
+            "key": "ime_about_copyright_en",
+            "value": "作者: 酷安@1e93d",
+            "description": "英文版权信息"
         }
     ]
 }
