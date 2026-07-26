@@ -103,7 +103,7 @@ def find_sdk_tools() -> tuple[str, str, str, str]:
         exe_name = f"{tool_name}.exe" if os.name == "nt" else tool_name
         bat_name = f"{tool_name}.bat" if os.name == "nt" else tool_name
 
-        # 1. 优先使用 SDK build-tools 内配套的高版本工具（防 aapt2 版本过老）
+        # 1. 优先使用 SDK build-tools 内配套的高版本工具
         if latest_build_tool:
             for cand in [os.path.join(latest_build_tool, exe_name), os.path.join(latest_build_tool, bat_name)]:
                 if os.path.exists(cand):
@@ -193,7 +193,7 @@ def get_latest_sha256() -> tuple[str | None, str | None]:
 
 def fetch_changelog_info() -> tuple[str, str, list[str]]:
     """正则抓取官网的版本号、更新日期和更新日志"""
-    headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36'}
+    headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
     req = urllib.request.Request(CHANGELOG_URL, headers=headers)
     try:
         with urllib.request.urlopen(req) as resp:
@@ -225,7 +225,7 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
     web_version, release_date, changelog = fetch_changelog_info()
 
     print(f"[*] 正在下载最新官方 APK: {APK_URL}")
-    req = urllib.request.Request(APK_URL, headers={'User-Agent': 'Mozilla/5.0 (Linux)'})
+    req = urllib.request.Request(APK_URL, headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'})
     with urllib.request.urlopen(req) as resp, open(DOWNLOAD_APK_PATH, 'wb') as out_file:
         shutil.copyfileobj(resp, out_file)
 
@@ -275,7 +275,7 @@ def parse_public_xml_color_mappings() -> dict[str, str]:
     if public_xml.exists():
         with open(public_xml, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
-                match = re.search(r'<public\s+type="color"\s+name="([^"]+)"\s+id="(0x7f[0-9a-fA-F]+)"', line)
+                match = re.search(r'<public\s+type="color"\s+name="([^"]+)"\s+id="(0x7f[0-9a-fA-F]{6})"', line)
                 if match:
                     res_name, res_id = match.group(1), match.group(2).lower()
                     id_to_unobfuscated[res_id] = res_name
@@ -289,36 +289,35 @@ def parse_smali_color_mappings() -> dict[str, str]:
     """
     id_to_obfuscated = {}
     
-    # 宽松正则：兼容静态常量赋值、.field 声明等多种 Apktool 反编译出的 Smali 格式
-    # 匹配示例: .field public static final white:I = 0x7f060012
+    # 精确内联字段映射匹配
     field_inline_pattern = re.compile(
-        r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]+)', re.IGNORECASE
+        r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE
     )
     
-    # 匹配在 <clinit> 中赋值的 pattern (const/v0, 0x7f... 随后 sput v0, L...;->field_name:I)
-    const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]+)')
+    # 静态代码块 <clinit> 赋值匹配
+    const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
     sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
 
     smali_dirs = list(DECOMPILE_DIR.glob("smali*"))
     for smali_dir in smali_dirs:
-        # 1. 优先精准定位 R$color.smali
-        r_color_files = list(smali_dir.rglob("R$color.smali"))
+        # 1. 查找包含 R$color 的类文件
+        r_color_files = list(smali_dir.rglob("*R$color*.smali"))
         
-        # 2. 如果没找到精准的 R$color.smali，则回退扫描整个 com/tencent/wetype 目录
-        files_to_scan = r_color_files if r_color_files else list((smali_dir / "com" / "tencent" / "wetype").rglob("*.smali"))
+        # 2. 回退机制：若找不到包含 R$color 的类，则扫描该 smali 文件夹下的所有 smali 文件
+        files_to_scan = r_color_files if r_color_files else list(smali_dir.rglob("*.smali"))
 
         for smali_file in files_to_scan:
-            if not smali_file.exists():
+            if not smali_file.is_file():
                 continue
             with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
                 
-                # 方式 A: 内联静态赋值匹配
+                # 方式 A: 内联赋值匹配
                 for match in field_inline_pattern.finditer(content):
                     field_name, res_id = match.group(1), match.group(2).lower()
                     id_to_obfuscated[res_id] = field_name
 
-                # 方式 B: <clinit> 异步赋值流水线匹配
+                # 方式 B: <clinit> 异步赋值流向匹配
                 lines = content.splitlines()
                 last_const_id = None
                 for line in lines:
@@ -346,8 +345,7 @@ def generate_version_config(
     id_to_obfuscated = parse_smali_color_mappings()        # 0x7f060001 -> "a_a_a"
     id_to_unobfuscated = parse_public_xml_color_mappings()  # 0x7f060001 -> "White"
 
-    # 2. 建立 双向反查表
-    # raw_key ("White") -> 0x7f060001
+    # 2. 建立双向反查表: raw_key ("White") -> 0x7f060001
     unobf_name_to_id = {v: k for k, v in id_to_unobfuscated.items()}
 
     with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
@@ -358,15 +356,15 @@ def generate_version_config(
     for item in base_colors:
         raw_key = item.get("key")  # 如 "White"
         
-        # 查找此未混淆 key 对应的 Resource ID
+        # 查找未混淆 key 对应的 Resource ID
         res_id = unobf_name_to_id.get(raw_key)
         
         obf_key = ""
         if res_id:
-            # 根据 Resource ID 去 Smali 解析结果中查混淆 Field 名
+            # 根据 Resource ID 查找 Smali 混淆 Field 名
             obf_key = id_to_obfuscated.get(res_id, "")
 
-        # 校验：若没查到混淆键，或者混淆键跟未混淆键一模一样（未混淆状态），则保留为空
+        # 保留为空的情况：未查到混淆键，或混淆键与未混淆键一致
         if obf_key == raw_key:
             obf_key = ""
 
@@ -397,7 +395,7 @@ def generate_version_config(
         "theme_colors": updated_colors
     }
 
-    # 清理空值的字段
+    # 过滤空值属性
     json_payload = {
         k: v for k, v in raw_payload.items()
         if v not in (None, "", [])
@@ -437,7 +435,7 @@ def sync_src_colors_xml(config_file: Path):
     night_xml_lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
 
     for item in theme_colors:
-        # 如果有独立的混淆键优先使用混淆键，没有则回退到未混淆键
+        # 优先选择混淆 Key，否则降级使用未混淆 Key
         key_name = item.get("obfuscated_key") or item.get("unobfuscated_key")
         
         light_color = item.get("light")
@@ -550,7 +548,6 @@ def generate_module_prop(version_name_override: str, version_code_override: str)
     """自动生成模块声明说明文件 module.prop"""
     git_count, git_hash = get_git_info()
     
-    # 清理多余字符与换行
     v_code = (version_code_override or os.environ.get("VERSION_CODE", git_count)).strip()
     v_name_raw = version_name_override.strip() if version_name_override else ""
     
