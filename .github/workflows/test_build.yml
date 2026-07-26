@@ -1,44 +1,98 @@
-name: Manual Build Overlay Module # 工作流名称，会显示在 GitHub Actions 列表页
+name: Build Wetype Monet Overlay
 
 on:
-  # 仅保留 workflow_dispatch：彻底关闭所有提交/PR自动触发，仅允许在 GitHub 网页手动点击运行
-  workflow_dispatch:
-
-permissions:
-  contents: write # 赋予 Actions 写入权限
+  push:
+    branches:
+      - main
+  # schedule:
+  #   # 每天 UTC 00:00 (北京时间 08:00) 自动检查更新
+  #   - cron: '0 0 * * *'
+  workflow_dispatch: # 支持手动点击触发
 
 jobs:
-  manual-build:
-    runs-on: ubuntu-latest # 使用最新的 Ubuntu 虚拟机环境
+  build:
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: write # 赋予提交 config JSON 和发布 Release 的写入权限
 
     steps:
-      # 1. 检出（拉取）仓库代码
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0 # 完整拉取所有 Commit 历史，确保脚本可通过 git rev-list 获取正确的提交数作为 versionCode
+          fetch-depth: 0
 
-      # 2. 配置 Python 运行环境
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.x' # 使用 Python 3 最新版本
+          python-version: '3.11'
 
-      # 3. 配置 Java 环境 (JDK 17)
-      - name: Set up JDK 17
+      - name: Set up Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'temurin' # 使用 Eclipse Temurin 发行版
-          java-version: '17'      # apksigner 和 keytool 依赖 JDK 17 环境
+          distribution: 'temurin'
+          java-version: '17'
 
-      # 4. 执行构建打包脚本
+      - name: Setup Android SDK Tools
+        uses: android-actions/setup-android@v3
+
+      - name: Install Dependencies & Tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zipalign apksigner aapt wget
+          
+          # 安装 apktool
+          APKTOOL_VER="2.9.3"
+          sudo wget https://raw.githubusercontent.com/iBotPeaches/Apktool/master/scripts/linux/apktool -O /usr/local/bin/apktool
+          sudo wget https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VER}/apktool_${APKTOOL_VER}.jar -O /usr/local/bin/apktool.jar
+          sudo chmod +x /usr/local/bin/apktool /usr/local/bin/apktool.jar
+
+      - name: Configure Git User
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Run Build Script
-        run: python scripts/build.py # 执行编译 Overlay APK、对齐签名并生成 Magisk 模块 ZIP 包
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        run: |
+          python3 build.py
 
-      # 5. 上传编译好的 ZIP 刷机包
-      - name: Upload Built Zip Artifact
+      - name: Commit Updated Config JSON to Repo
+        id: commit_config
+        run: |
+          git add config/*.json
+          if git diff --cached --quiet; then
+            echo "has_changes=false" >> $GITHUB_OUTPUT
+            echo "没有新的配置文件变动。"
+          else
+            echo "has_changes=true" >> $GITHUB_OUTPUT
+            git commit -m "chore(config): auto-update version config from build workflow"
+            git push
+            echo "已成功提交最新的配置文件至仓库。"
+          fi
+
+      - name: Upload Output Artifacts (ZIP & JSON)
         uses: actions/upload-artifact@v4
         with:
-          name: WetypeMonet-Module # 在 GitHub Actions 产物列表中显示的名称
-          path: out/*.zip           # 打包上传 out 目录下所有的 .zip 模块文件
-          retention-days: 7        # 产物保存期限设置为 7 天（到期后自动清理）
+          name: Wetype-Monet-Artifacts
+          path: |
+            out/*.zip
+            out/*.json
+
+      - name: Create Release
+        if: steps.commit_config.outputs.has_changes == 'true' || github.event_name == 'workflow_dispatch'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: build-${{ github.run_number }}
+          name: "微信输入法 Monet Overlay Auto-Build"
+          body: |
+            自动化适配构建完成！
+            
+            - 📦 **模块包**: 包含编译完成的 Overlay Magisk/KernelSU ZIP 刷机包。
+            - 📄 **配置文件**: 包含当前版本提取的适配 JSON 配置。
+          files: |
+            out/*.zip
+            out/*.json
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
