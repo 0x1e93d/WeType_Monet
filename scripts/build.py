@@ -23,6 +23,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
+from zoneinfo import ZoneInfo
 
 # ==============================================================================
 # 1. 常量与路径配置
@@ -38,6 +39,7 @@ OUT_DIR = PROJECT_ROOT / "out"
 BUILD_TMP_DIR = OUT_DIR / "build_tmp"
 TEMPLATE_DIR = PROJECT_ROOT / "module_template"
 DECOMPILE_DIR = OUT_DIR / "decompiled_apk"
+BUILD_METADATA_PATH = OUT_DIR / "internal" / "build-metadata.json"
 
 # 关键文件
 BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
@@ -85,6 +87,10 @@ def load_module_config() -> dict[str, str]:
     if not re.fullmatch(r"\d+\.\d+\.\d+", version):
         raise ValueError("[!] module.json 的 version 必须为 MAJOR.MINOR.PATCH 格式")
     return config
+
+
+def current_build_time() -> str:
+    return datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M UTC+08:00")
 
 def find_sdk_tools() -> tuple[str, str, str, str]:
     """自动查找 aapt2, zipalign, apksigner 与 android.jar 路径"""
@@ -560,7 +566,7 @@ def generate_module_prop() -> tuple[str, str]:
     version_name = f"v{module_config['version']}"
     version_code = os.environ.get("VERSION_CODE", git_count).strip() or git_count
 
-    build_time = datetime.now().strftime("%Y-%m-%d %H:%M")
+    build_time = current_build_time()
     description = f"{MODULE_DESCRIPTION} [构建时间: {build_time}]"
 
     lines = [
@@ -610,9 +616,10 @@ def write_build_metadata(
         "apk_code": apk_code,
         "config_file": config_path.name,
         "zip_file": zip_path.name,
-        "build_time": datetime.now().astimezone().strftime("%Y-%m-%d %H:%M %Z"),
+        "build_time": current_build_time(),
     }
-    (OUT_DIR / "build-metadata.json").write_text(
+    BUILD_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
+    BUILD_METADATA_PATH.write_text(
         json.dumps(metadata, ensure_ascii=False, indent=4) + "\n", encoding="utf-8"
     )
 

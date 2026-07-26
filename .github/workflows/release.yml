@@ -81,7 +81,7 @@ jobs:
       - name: Read build metadata
         id: metadata
         run: |
-          if [ ! -f out/build-metadata.json ]; then
+          if [ ! -f out/internal/build-metadata.json ]; then
             echo "built=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
@@ -90,7 +90,7 @@ jobs:
           import json
           from pathlib import Path
 
-          metadata = json.loads(Path("out/build-metadata.json").read_text(encoding="utf-8"))
+          metadata = json.loads(Path("out/internal/build-metadata.json").read_text(encoding="utf-8"))
           for key, value in metadata.items():
               print(f"{key}={value}")
           PY
