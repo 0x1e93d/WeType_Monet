@@ -104,7 +104,7 @@ multi_user_installation() {
 
 # 安装逻辑
 installation() {
-    if [ "$PACKAGE_TYPE" = "dynamic" ]; then
+    if [ "$PACKAGE_TYPE" = "dynamic" ] && [ "$(get_conf_value "$CONFIG" "is_first_installation" "1")" = "0" ]; then
         # 动态模块安装逻辑
         export MODULE_HOT_INSTALL_REQUEST=true
         install -r "$MODPATH/WetypeMonet.apk"
