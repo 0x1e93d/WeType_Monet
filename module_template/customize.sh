@@ -110,7 +110,7 @@ installation() {
         cp -rf "$MODPATH/files/WetypeMonet.apk" "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
         pm install -r "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
         rm -rf "$MODPATH/files"
-        am force-stop --user $i com.tencent.wetype  2>/dev/null
+        am force-stop --user 0 com.tencent.wetype  2>/dev/null
         export MODULE_HOT_INSTALL_REQUEST=true
         echo "- [安装完成] 立即生效"
     else
