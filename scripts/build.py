@@ -74,10 +74,7 @@ def get_git_info() -> tuple[str, str]:
         return "1", "dev"
 
 def find_sdk_tools() -> tuple[str, str, str, str]:
-    """
-    自动查找 aapt2, zipalign, apksigner 与 android.jar 路径
-    兼容 Windows 本地环境与 GitHub Actions (Ubuntu / macOS / Windows) 环境
-    """
+    """自动查找 aapt2, zipalign, apksigner 与 android.jar 路径"""
     aapt2 = os.environ.get("AAPT2_PATH")
     zipalign = os.environ.get("ZIPALIGN_PATH")
     apksigner = os.environ.get("APKSIGNER_PATH")
@@ -103,13 +100,11 @@ def find_sdk_tools() -> tuple[str, str, str, str]:
         exe_name = f"{tool_name}.exe" if os.name == "nt" else tool_name
         bat_name = f"{tool_name}.bat" if os.name == "nt" else tool_name
 
-        # 1. 优先使用 SDK build-tools 内配套的高版本工具
         if latest_build_tool:
             for cand in [os.path.join(latest_build_tool, exe_name), os.path.join(latest_build_tool, bat_name)]:
                 if os.path.exists(cand):
                     return cand
 
-        # 2. 兜底使用系统 PATH 中的工具
         found = shutil.which(tool_name)
         if found:
             return found
@@ -265,11 +260,11 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
     return new_sha256, apk_code, final_apk_name, release_date, final_changelog
 
 # ==============================================================================
-# 4. 阶段二：提取 Smali & public.xml 混淆 Key 映射与生成配置
+# 4. 阶段二：解析 public.xml & Smali 并精准生成映射 (已修复空键问题)
 # ==============================================================================
 
 def parse_public_xml_color_mappings() -> dict[str, str]:
-    """从 res/values/public.xml 解析出真实的 Resource ID 与未混淆 XML 资源名映射 (Key: 0x7f..., Value: Resource_Name)"""
+    """解析 res/values/public.xml，返回规范化的 ID (小写 0x7f...) -> 原始 Resource_Name 的映射"""
     id_to_unobfuscated = {}
     public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
     if public_xml.exists():
@@ -284,26 +279,22 @@ def parse_public_xml_color_mappings() -> dict[str, str]:
 
 def parse_smali_color_mappings() -> dict[str, str]:
     """
-    深度扫描所有 R$color.smali 及相关类文件中的混淆 Field 与 Resource ID 映射。
-    返回字典: { Resource_ID (0x7f...) : Smali_Field_Name }
+    遍历全局 Smali，提取 0x7f... ID 到 Smali 字段名的映射关系。
+    返回字典: { 规范化 Resource_ID (0x7f... 小写) : Smali_Field_Name }
     """
     id_to_obfuscated = {}
     
-    # 精确内联字段映射匹配
+    # 支持两种模式：静态直接内联 与 静态块赋值
     field_inline_pattern = re.compile(
         r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE
     )
-    
-    # 静态代码块 <clinit> 赋值匹配
     const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]{6})', re.IGNORECASE)
     sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
 
     smali_dirs = list(DECOMPILE_DIR.glob("smali*"))
     for smali_dir in smali_dirs:
-        # 1. 查找包含 R$color 的类文件
+        # 优先检索可能包含 R$color 的类文件，找不到则扫描全量 Smali
         r_color_files = list(smali_dir.rglob("*R$color*.smali"))
-        
-        # 2. 回退机制：若找不到包含 R$color 的类，则扫描该 smali 文件夹下的所有 smali 文件
         files_to_scan = r_color_files if r_color_files else list(smali_dir.rglob("*.smali"))
 
         for smali_file in files_to_scan:
@@ -312,12 +303,12 @@ def parse_smali_color_mappings() -> dict[str, str]:
             with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
                 
-                # 方式 A: 内联赋值匹配
+                # 模式 1: 直接内联声明匹配
                 for match in field_inline_pattern.finditer(content):
                     field_name, res_id = match.group(1), match.group(2).lower()
                     id_to_obfuscated[res_id] = field_name
 
-                # 方式 B: <clinit> 异步赋值流向匹配
+                # 模式 2: <clinit> 异步常量传值匹配
                 lines = content.splitlines()
                 last_const_id = None
                 for line in lines:
@@ -337,39 +328,40 @@ def parse_smali_color_mappings() -> dict[str, str]:
 def generate_version_config(
     sha256_str: str, apk_code: str, apk_name: str, release_date: str, changelog: list[str]
 ) -> Path:
-    """结合 base_colors.json 模板生成当前版本的 JSON 映射配置"""
+    """对比并生成版本映射配置，修复填充逻辑"""
     if not BASE_COLORS_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础颜色模板: {BASE_COLORS_PATH}")
 
-    # 1. 解析字典
-    id_to_obfuscated = parse_smali_color_mappings()        # 0x7f060001 -> "a_a_a"
-    id_to_unobfuscated = parse_public_xml_color_mappings()  # 0x7f060001 -> "White"
+    # 1. 解析字典（强制所有 ID 统一为小写格式）
+    id_to_obfuscated = parse_smali_color_mappings()        # "0x7f060001" -> "a_a_a"
+    id_to_unobfuscated = parse_public_xml_color_mappings()  # "0x7f060001" -> "White"
 
-    # 2. 建立双向反查表: raw_key ("White") -> 0x7f060001
+    # 2. 建立反查表: raw_key ("White") -> "0x7f060001"
     unobf_name_to_id = {v: k for k, v in id_to_unobfuscated.items()}
 
     with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
         base_colors = json.load(f).get("theme_colors", [])
 
-    updated_colors, missing_keys = [], []
+    updated_colors = []
+    missing_keys = []
 
     for item in base_colors:
-        raw_key = item.get("key")  # 如 "White"
+        raw_key = item.get("unobfuscated_key") or item.get("key")  # 兼容 Key 名写法
         
-        # 查找未混淆 key 对应的 Resource ID
+        # 通过未混淆 Key 名反查 ID
         res_id = unobf_name_to_id.get(raw_key)
         
         obf_key = ""
         if res_id:
-            # 根据 Resource ID 查找 Smali 混淆 Field 名
+            # 优先从 Smali 混淆映射中查出混淆后的字段名
             obf_key = id_to_obfuscated.get(res_id, "")
-
-        # 保留为空的情况：未查到混淆键，或混淆键与未混淆键一致
-        if obf_key == raw_key:
-            obf_key = ""
-
-        if not res_id:
-            missing_keys.append(raw_key)
+        
+        # 修复关键点：如果找到了混淆 Key，则使用混淆 Key；如果未找到混淆 Key 但查到了 ID，回退使用原始 Key
+        if not obf_key:
+            if res_id:
+                obf_key = raw_key
+            else:
+                missing_keys.append(raw_key)
 
         updated_colors.append({
             "unobfuscated_key": raw_key,
@@ -380,7 +372,7 @@ def generate_version_config(
         })
 
     if missing_keys:
-        print(f"[!] 警告: 共 {len(missing_keys)} 个 Key 未能在 public.xml 中找到 Resource ID: {missing_keys}")
+        print(f"[!] 警告: 共 {len(missing_keys)} 个 Key 未能在 public.xml 中找到对应 Resource ID: {missing_keys}")
 
     safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_code)
@@ -395,7 +387,6 @@ def generate_version_config(
         "theme_colors": updated_colors
     }
 
-    # 过滤空值属性
     json_payload = {
         k: v for k, v in raw_payload.items()
         if v not in (None, "", [])
@@ -412,15 +403,11 @@ def generate_version_config(
     return config_path
 
 # ==============================================================================
-# 5. 阶段三：补全 values / values-night 并编译 Overlay APK
+# 5. 阶段三：生成 colors.xml 并编译 Overlay
 # ==============================================================================
 
 def sync_src_colors_xml(config_file: Path):
-    """
-    根据配置文件动态生成:
-      - src/res/values/colors.xml (日间)
-      - src/res/values-night/colors.xml (夜间)
-    """
+    """根据生成的配置文件更新 Overlay 资源文件"""
     with open(config_file, "r", encoding="utf-8") as f:
         theme_colors = json.load(f).get("theme_colors", [])
 
@@ -435,9 +422,11 @@ def sync_src_colors_xml(config_file: Path):
     night_xml_lines = ['<?xml version="1.0" encoding="utf-8"?>', '<resources>']
 
     for item in theme_colors:
-        # 优先选择混淆 Key，否则降级使用未混淆 Key
+        # 优先采用混淆后的 Key，若没有则回退未混淆 Key
         key_name = item.get("obfuscated_key") or item.get("unobfuscated_key")
-        
+        if not key_name:
+            continue
+
         light_color = item.get("light")
         if light_color:
             day_xml_lines.append(f'    <color name="{key_name}">{light_color}</color>')
@@ -459,7 +448,7 @@ def sync_src_colors_xml(config_file: Path):
     print(f"[+] 补全夜间模式色彩: {night_path}")
 
 def build_overlay_apk():
-    """调用 AAPT2 编译 Overlay，对齐并签名"""
+    """编译并签名 Overlay APK"""
     aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
 
     target_apk_dir = BUILD_TMP_DIR / "files"
@@ -532,7 +521,7 @@ def build_overlay_apk():
     print(f"[+] Overlay APK 生成成功 -> {final_apk}")
 
 # ==============================================================================
-# 6. 阶段四：组装模块与制作 ZIP 刷机包
+# 6. 阶段四：模块组装与打包
 # ==============================================================================
 
 def prepare_template():
@@ -545,7 +534,7 @@ def prepare_template():
         shutil.copytree(TEMPLATE_DIR, BUILD_TMP_DIR, dirs_exist_ok=True)
 
 def generate_module_prop(version_name_override: str, version_code_override: str) -> str:
-    """自动生成模块声明说明文件 module.prop"""
+    """生成模块属性清单 module.prop"""
     git_count, git_hash = get_git_info()
     
     v_code = (version_code_override or os.environ.get("VERSION_CODE", git_count)).strip()
@@ -590,7 +579,7 @@ def create_module_zip(version_name: str):
     print(f"[+] 刷机包构建成功: {zip_path}")
 
 # ==============================================================================
-# 7. 主执行流程控制
+# 7. 主流程执行控制
 # ==============================================================================
 
 def main():
