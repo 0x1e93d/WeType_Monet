@@ -251,13 +251,14 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
 
     yml_path = DECOMPILE_DIR / "apktool.yml"
     apk_code, apk_name = "", ""
+    # 找到解析 apktool.yml 的循环，加上 .strip(" '\"\r\n") 过滤尾部换行符：
     if yml_path.exists():
         with open(yml_path, "r", encoding="utf-8") as f:
             for line in f:
                 if "versionCode:" in line:
-                    apk_code = line.split("versionCode:")[1].strip(" '\"")
+                    apk_code = line.split("versionCode:")[1].strip(" '\"\r\n")
                 elif "versionName:" in line:
-                    apk_name = line.split("versionName:")[1].strip(" '\"")
+                    apk_name = line.split("versionName:")[1].strip(" '\"\r\n")
 
     final_apk_name = apk_name or web_version or "unknown_version"
     final_changelog = changelog if (not web_version or web_version == final_apk_name) else []
@@ -387,7 +388,7 @@ def sync_src_colors_xml(config_file: Path):
 
 def build_overlay_apk():
     """调用 AAPT2 编译 Overlay，对齐并签名"""
-    aapt2, zipalign, apksigner, android_jar = find_linux_sdk_tools()
+    aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
 
     target_apk_dir = BUILD_TMP_DIR / "files"
     target_apk_dir.mkdir(parents=True, exist_ok=True)
