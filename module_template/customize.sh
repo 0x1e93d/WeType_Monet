@@ -106,15 +106,19 @@ multi_user_installation() {
 installation() {
     if [ "$PACKAGE_TYPE" = "dynamic" ] && [ "$(get_conf_value "$CONFIG" "is_first_installation" "1")" = "0" ]; then
         # 动态模块安装逻辑
-        export MODULE_HOT_INSTALL_REQUEST=true
-        install -r "$MODPATH/WetypeMonet.apk"
+        mkdir -p "$MODPATH/system/priv-app/WetypeMonet"
+        cp -rf "$MODPATH/files/WetypeMonet.apk" "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
+        pm install -r "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
+        rm -rf "$MODPATH/files"
         am force-stop --user $i com.tencent.wetype  2>/dev/null
+        export MODULE_HOT_INSTALL_REQUEST=true
         echo "- [安装完成] 立即生效"
     else
         echo "- 正在进行静态模块安装……"
         # 静态模块安装逻辑
         mkdir -p "$MODPATH/system/priv-app/WetypeMonet"
         cp -rf "$MODPATH/files/WetypeMonet.apk" "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
+        rm -rf "$MODPATH/files"
         echo "- [安装完成] 重启生效"
     fi
 }

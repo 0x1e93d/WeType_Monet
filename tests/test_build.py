@@ -135,6 +135,19 @@ class BuildMappingTests(unittest.TestCase):
         with self.assertRaisesRegex(FileNotFoundError, "源文件不存在"):
             build.sync_src_resources(config_path)
 
+    def test_base_drawables_match_source_files(self):
+        repository_root = Path(__file__).resolve().parents[1]
+        base_config = json.loads((repository_root / "config" / "base.json").read_text(encoding="utf-8"))
+        drawables = base_config["theme_drawables"]
+        configured_names = {Path(item["file_path"]).name for item in drawables}
+        source_names = {
+            path.name for path in (repository_root / "overlay" / "assets" / "drawable").glob("*") if path.is_file()
+        }
+
+        self.assertEqual(configured_names, source_names)
+        self.assertEqual(len({item["key"] for item in drawables}), len(drawables))
+        self.assertTrue(all(item["description"].strip() for item in drawables))
+
 
 if __name__ == "__main__":
     unittest.main()

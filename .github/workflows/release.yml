@@ -95,6 +95,21 @@ jobs:
               print(f"{key}={value}")
           PY
 
+      - name: Collect submitted changes
+        id: changes
+        if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            git log -1 --format='- %s (%h)' "$AFTER_SHA"
+          else
+            git log --format='- %s (%h)' "$BEFORE_SHA..$AFTER_SHA"
+          fi >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
       - name: Commit generated configuration and version
         if: steps.metadata.outputs.built == 'true'
         run: |
@@ -127,6 +142,9 @@ jobs:
             - 发布序号：${{ steps.metadata.outputs.version_code }}
             - 适配版本：微信输入法 ${{ steps.metadata.outputs.apk_name }} (${{ steps.metadata.outputs.apk_code }})
             - 构建时间：${{ steps.metadata.outputs.build_time }}
+
+            ### 本次变更
+            ${{ steps.changes.outputs.summary || '- 自动检测到上游 APK 更新，模块展示版本保持不变。' }}
 
             ### 产物
             - `${{ steps.metadata.outputs.zip_file }}`：Magisk/KernelSU Overlay 模块
