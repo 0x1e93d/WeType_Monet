@@ -269,34 +269,70 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]]:
 # ==============================================================================
 
 def parse_public_xml_color_mappings() -> dict[str, str]:
-    """从 res/values/public.xml 解析出真实的 Resource ID 与未混淆 XML 资源名映射"""
+    """从 res/values/public.xml 解析出真实的 Resource ID 与未混淆 XML 资源名映射 (Key: 0x7f..., Value: Resource_Name)"""
     id_to_unobfuscated = {}
     public_xml = DECOMPILE_DIR / "res" / "values" / "public.xml"
     if public_xml.exists():
         with open(public_xml, "r", encoding="utf-8", errors="ignore") as f:
             for line in f:
-                match = re.search(r'<public\s+type="color"\s+name="([^"]+)"\s+id="(0x[0-9a-fA-F]+)"', line)
+                match = re.search(r'<public\s+type="color"\s+name="([^"]+)"\s+id="(0x7f[0-9a-fA-F]+)"', line)
                 if match:
                     res_name, res_id = match.group(1), match.group(2).lower()
                     id_to_unobfuscated[res_id] = res_name
+    print(f"[+] public.xml 解析完成，获取 {len(id_to_unobfuscated)} 个颜色资源 ID 定义")
     return id_to_unobfuscated
 
 def parse_smali_color_mappings() -> dict[str, str]:
-    """深度正则扫描 Smali 代码中的资源 ID 定义 (Smali_Field -> ID)"""
+    """
+    深度扫描所有 R$color.smali 及相关类文件中的混淆 Field 与 Resource ID 映射。
+    返回字典: { Resource_ID (0x7f...) : Smali_Field_Name }
+    """
     id_to_obfuscated = {}
-    smali_field_pattern = re.compile(r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]+)')
     
-    for smali_dir in DECOMPILE_DIR.glob("smali*"):
-        target_pkg = smali_dir / "com" / "tencent" / "wetype"
-        if not target_pkg.exists():
-            continue
-        for smali_file in target_pkg.rglob("*.smali"):
+    # 宽松正则：兼容静态常量赋值、.field 声明等多种 Apktool 反编译出的 Smali 格式
+    # 匹配示例: .field public static final white:I = 0x7f060012
+    field_inline_pattern = re.compile(
+        r'\.field\s+.*?\s+([a-zA-Z0-9_$]+):I\s*=\s*(0x7f[0-9a-fA-F]+)', re.IGNORECASE
+    )
+    
+    # 匹配在 <clinit> 中赋值的 pattern (const/v0, 0x7f... 随后 sput v0, L...;->field_name:I)
+    const_pattern = re.compile(r'const[/\w]*\s+v\d+,\s*(0x7f[0-9a-fA-F]+)')
+    sput_pattern = re.compile(r'sput[/\w]*\s+v\d+,\s*L[^;]+;->([a-zA-Z0-9_$]+):I')
+
+    smali_dirs = list(DECOMPILE_DIR.glob("smali*"))
+    for smali_dir in smali_dirs:
+        # 1. 优先精准定位 R$color.smali
+        r_color_files = list(smali_dir.rglob("R$color.smali"))
+        
+        # 2. 如果没找到精准的 R$color.smali，则回退扫描整个 com/tencent/wetype 目录
+        files_to_scan = r_color_files if r_color_files else list((smali_dir / "com" / "tencent" / "wetype").rglob("*.smali"))
+
+        for smali_file in files_to_scan:
+            if not smali_file.exists():
+                continue
             with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
-                for match in smali_field_pattern.finditer(f.read()):
+                content = f.read()
+                
+                # 方式 A: 内联静态赋值匹配
+                for match in field_inline_pattern.finditer(content):
                     field_name, res_id = match.group(1), match.group(2).lower()
                     id_to_obfuscated[res_id] = field_name
 
-    print(f"[+] Smali 扫描完成，共获取 {len(id_to_obfuscated)} 项 Key-ID 字典")
+                # 方式 B: <clinit> 异步赋值流水线匹配
+                lines = content.splitlines()
+                last_const_id = None
+                for line in lines:
+                    c_match = const_pattern.search(line)
+                    if c_match:
+                        last_const_id = c_match.group(1).lower()
+                        continue
+                    s_match = sput_pattern.search(line)
+                    if s_match and last_const_id:
+                        field_name = s_match.group(1)
+                        id_to_obfuscated[last_const_id] = field_name
+                        last_const_id = None
+
+    print(f"[+] Smali 扫描完成，获取 {len(id_to_obfuscated)} 项 ID -> 混淆 Field 映射关系")
     return id_to_obfuscated
 
 def generate_version_config(
@@ -306,26 +342,31 @@ def generate_version_config(
     if not BASE_COLORS_PATH.exists():
         raise FileNotFoundError(f"[!] 找不到基础颜色模板: {BASE_COLORS_PATH}")
 
-    id_to_obfuscated = parse_smali_color_mappings()
-    id_to_unobfuscated = parse_public_xml_color_mappings()
+    # 1. 解析字典
+    id_to_obfuscated = parse_smali_color_mappings()        # 0x7f060001 -> "a_a_a"
+    id_to_unobfuscated = parse_public_xml_color_mappings()  # 0x7f060001 -> "White"
 
-    # 建立 反向字典: unobfuscated_key (资源名) -> res_id
+    # 2. 建立 双向反查表
+    # raw_key ("White") -> 0x7f060001
     unobf_name_to_id = {v: k for k, v in id_to_unobfuscated.items()}
 
     with open(BASE_COLORS_PATH, "r", encoding="utf-8") as f:
         base_colors = json.load(f).get("theme_colors", [])
 
     updated_colors, missing_keys = [], []
+
     for item in base_colors:
-        raw_key = item.get("key")
+        raw_key = item.get("key")  # 如 "White"
+        
+        # 查找此未混淆 key 对应的 Resource ID
         res_id = unobf_name_to_id.get(raw_key)
         
         obf_key = ""
         if res_id:
-            # 尝试从 Smali 查出该 ID 对应的字段名
+            # 根据 Resource ID 去 Smali 解析结果中查混淆 Field 名
             obf_key = id_to_obfuscated.get(res_id, "")
 
-        # 核心修复卡点：若混淆键与未混淆键完全一致，说明未发生混淆，清空 obfuscated_key
+        # 校验：若没查到混淆键，或者混淆键跟未混淆键一模一样（未混淆状态），则保留为空
         if obf_key == raw_key:
             obf_key = ""
 
@@ -341,13 +382,12 @@ def generate_version_config(
         })
 
     if missing_keys:
-        print(f"[!] 警告: 共 {len(missing_keys)} 个 Key 未能在 public.xml 中匹配到定义。")
+        print(f"[!] 警告: 共 {len(missing_keys)} 个 Key 未能在 public.xml 中找到 Resource ID: {missing_keys}")
 
     safe_name = re.sub(r'[\\/:*?"<>|\s]', '_', apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', '_', apk_code)
     filename = f"{safe_name}({safe_code}).json" if safe_code else f"{safe_name}.json"
 
-    # 基础 Payload
     raw_payload = {
         "version_name": apk_name,
         "version_code": apk_code,
@@ -357,7 +397,7 @@ def generate_version_config(
         "theme_colors": updated_colors
     }
 
-    # 核心修复：清理所有空字段（"" / None / []）
+    # 清理空值的字段
     json_payload = {
         k: v for k, v in raw_payload.items()
         if v not in (None, "", [])
