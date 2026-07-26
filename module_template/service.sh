@@ -47,14 +47,15 @@ if  [ "$(get_conf_value "$CONFIG"= "is_first_installation" "0")" = "1" ] && [ "$
 fi
 
 # 启用 动态RRO
-if [ $(get_conf_value "$CONFIG" "blur_enabled" "0") = 1 ];then
+if [ $(get_conf_value "$CONFIG" "package_type" "static") = "dynamic" ];then
     user_id=$(ls /data/user/)
     for i in $user_id; do
         cmd overlay enable --user $i monet.com.tencent.wetype 2>/dev/null
+        am force-stop --user $i com.tencent.wetype  2>/dev/null
     done
 fi
 
 # 首次安装后，设置为非首次安装
-if [ "$(get_conf_value "$CONFIG" "is_first_install" "0")" = "1" ];then
-    set_conf_value "$CONFIG" "is_first_install" "0"
+if [ "$(get_conf_value "$CONFIG" "is_first_installation" "0")" = "1" ];then
+    set_conf_value "$CONFIG" "is_first_installation" "0"
 fi
