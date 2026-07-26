@@ -238,7 +238,8 @@ def parse_public_xml_mappings(res_type: str) -> dict[str, str]:
         with open(public_xml, "r", encoding="utf-8", errors="ignore") as f:
             pattern = re.compile(rf'<public\s+type="{res_type}"\s+name="([^"]+)"\s+id="(0x7f[0-9a-fA-F]{6})"')
             for line in f:
-                if match := pattern.search(line):
+                match = pattern.search(line)
+                if match:  # <--- 增加此判断，防止 NoneType 没有 group()
                     id_to_name[match.group(2).lower()] = match.group(1)
     print(f"[+] public.xml 解析 [{res_type}] 完成，获取 {len(id_to_name)} 个资源 ID 定义")
     return id_to_name
@@ -257,16 +258,20 @@ def parse_smali_mappings() -> dict[str, str]:
             with open(smali_file, "r", encoding="utf-8", errors="ignore") as f:
                 content = f.read()
                 for match in field_pattern.finditer(content):
-                    key_to_id[match.group(1)] = match.group(2).lower()
+                    if match:
+                        key_to_id[match.group(1)] = match.group(2).lower()
                 
                 lines = content.splitlines()
                 last_const_id = None
                 for line in lines:
-                    if c_match := const_pattern.search(line):
+                    c_match = const_pattern.search(line)
+                    if c_match:
                         last_const_id = c_match.group(1).lower()
-                    elif s_match := sput_pattern.search(line) and last_const_id:
-                        key_to_id[s_match.group(1)] = last_const_id
-                        last_const_id = None
+                    else:
+                        sput_match = sput_pattern.search(line)
+                        if sput_match and last_const_id:
+                            key_to_id[sput_match.group(1)] = last_const_id
+                            last_const_id = None
 
     print(f"[+] Smali 反查表建立完成，共抓取 {len(key_to_id)} 组 Key -> ID 映射")
     return key_to_id
@@ -284,8 +289,14 @@ def process_mapping_items(items: list, key_to_id: dict, id_to_obf_name: dict) ->
         final_obf_key = obf_name if obf_name else raw_key
 
         new_item = item.copy()
-        new_item["unobfuscated_key" if "unobfuscated_key" in item else "name"] = raw_key
-        new_item["obfuscated_key" if "obfuscated_key" in item or "light" in item else "obfuscated_name"] = final_obf_key
+        if "unobfuscated_key" in item:
+            new_item["unobfuscated_key"] = raw_key
+        if "obfuscated_key" in item or "light" in item:
+            new_item["obfuscated_key"] = final_obf_key
+        elif "name" in item:
+            new_item["name"] = raw_key
+            new_item["obfuscated_name"] = final_obf_key
+
         processed.append(new_item)
     return processed
 
