@@ -11,9 +11,11 @@ on:
       - "overlay/**"
       - "scripts/**"
       - "tests/**"
+
   schedule:
-    # UTC 22:00 is 06:00 in Asia/Shanghai on the following day.
-    - cron: "0 22 * * *"
+    - cron: "17 6 * * *"
+      timezone: "Asia/Shanghai"
+
   workflow_dispatch:
 
 permissions:
