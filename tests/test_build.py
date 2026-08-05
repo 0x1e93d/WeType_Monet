@@ -26,6 +26,7 @@ class BuildMappingTests(unittest.TestCase):
             "DECOMPILE_DIR": build.DECOMPILE_DIR,
             "BASE_CONFIG_PATH": build.BASE_CONFIG_PATH,
             "MODULE_CONFIG_PATH": build.MODULE_CONFIG_PATH,
+            "TARGET_CONFIG_DIR": build.TARGET_CONFIG_DIR,
             "LATEST_CONFIG_PATH": build.LATEST_CONFIG_PATH,
         }
         build.PROJECT_ROOT = self.root
@@ -35,8 +36,10 @@ class BuildMappingTests(unittest.TestCase):
         build.DECOMPILE_DIR = build.OUT_DIR / "decompiled_apk"
         build.BASE_CONFIG_PATH = build.CONFIG_DIR / "base.json"
         build.MODULE_CONFIG_PATH = build.CONFIG_DIR / "module.json"
+        build.TARGET_CONFIG_DIR = build.CONFIG_DIR / "targets"
         build.LATEST_CONFIG_PATH = build.CONFIG_DIR / "latest.json"
-        build.CONFIG_DIR.mkdir(parents=True)
+        build.TARGET_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+        build.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         build.OUT_DIR.mkdir(parents=True)
         self._write_fixture_apk()
 
@@ -124,41 +127,66 @@ class BuildMappingTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "missing_drawable"):
             build.generate_version_config("hash", "1", "1.0", "2026-01-01", [])
 
-    def test_latest_hash_uses_explicit_state_file(self):
-        (build.CONFIG_DIR / "1.0(1).json").write_text('{"sha256": "older"}', encoding="utf-8")
-        (build.CONFIG_DIR / "2.0(2).json").write_text('{"sha256": "expected"}', encoding="utf-8")
-        build.LATEST_CONFIG_PATH.write_text(
-            '{"sha256": "expected", "config_file": "2.0(2).json", "schema_version": 1}',
-            encoding="utf-8",
-        )
+    def _write_latest_state(self, apk_name="1.0", apk_code="1", apk_sha="a", base_sha="b"):
+        config_path = build.TARGET_CONFIG_DIR / f"{apk_name}({apk_code}).json"
+        config_path.write_text("{}", encoding="utf-8")
+        state = {
+            "state_version": 1,
+            "module_version": 1,
+            "base_sha256": base_sha * 64,
+            "upstream": {
+                "version_name": apk_name,
+                "version_code": apk_code,
+                "sha256": apk_sha * 64,
+                "release_date": "2026-01-01",
+                "config_file": config_path.relative_to(build.CONFIG_DIR).as_posix(),
+            },
+        }
+        build.LATEST_CONFIG_PATH.write_text(json.dumps(state), encoding="utf-8")
+        return state
 
-        self.assertEqual(build.get_latest_sha256(), ("2.0(2).json", "expected"))
+    def test_latest_hash_uses_explicit_state_file(self):
+        self._write_latest_state(apk_name="2.0", apk_code="2", apk_sha="e")
+
+        self.assertEqual(build.get_latest_sha256(), ("targets/2.0(2).json", "e" * 64))
 
     def test_write_latest_config_records_successful_build(self):
-        config_path = build.CONFIG_DIR / "1.0(1).json"
+        config_path = build.TARGET_CONFIG_DIR / "1.0(1).json"
         config_path.write_text("{}", encoding="utf-8")
 
-        build.write_latest_config("expected", "1", "1.0", "2026-01-01", config_path, 1)
+        build.write_latest_config(2, "b" * 64, "a" * 64, "1", "1.0", "2026-01-01", config_path)
 
         self.assertEqual(
             json.loads(build.LATEST_CONFIG_PATH.read_text(encoding="utf-8")),
             {
-                "version_name": "1.0",
-                "version_code": "1",
-                "release_date": "2026-01-01",
-                "sha256": "expected",
-                "config_file": "1.0(1).json",
-                "schema_version": 1,
+                "state_version": 1,
+                "module_version": 2,
+                "base_sha256": "b" * 64,
+                "upstream": {
+                    "version_name": "1.0",
+                    "version_code": "1",
+                    "sha256": "a" * 64,
+                    "release_date": "2026-01-01",
+                    "config_file": "targets/1.0(1).json",
+                },
             },
         )
-        self.assertEqual(build.get_latest_sha256(), ("1.0(1).json", "expected"))
+        self.assertEqual(build.get_latest_sha256(), ("targets/1.0(1).json", "a" * 64))
 
-    def test_should_build_only_for_apk_or_schema_updates(self):
-        self.assertFalse(build.should_build("same", 1, "same", 1))
-        self.assertTrue(build.should_build("changed", 1, "same", 1))
-        self.assertTrue(build.should_build("same", 2, "same", 1))
-        self.assertFalse(build.should_build("same", 1, "same", 2))
-        self.assertTrue(build.should_build("same", 1, None, None))
+    def test_should_build_for_apk_or_base_changes(self):
+        state = self._write_latest_state()
+        self.assertFalse(build.should_build("a" * 64, "b" * 64, state))
+        self.assertTrue(build.should_build("c" * 64, "b" * 64, state))
+        self.assertTrue(build.should_build("a" * 64, "d" * 64, state))
+        self.assertTrue(build.should_build("a" * 64, "b" * 64, None))
+
+    def test_canonical_json_hash_ignores_formatting(self):
+        build.BASE_CONFIG_PATH.write_text('{"b": 2, "a": 1}', encoding="utf-8")
+        first_hash = build.get_base_sha256()
+        build.BASE_CONFIG_PATH.write_text('{\n  "a": 1,\n  "b": 2\n}', encoding="utf-8")
+
+        self.assertEqual(build.get_base_sha256(), first_hash)
+        self.assertEqual(build.get_next_module_version({"module_version": 1}), 2)
 
     def test_fails_for_missing_drawable_source(self):
         self._write_base_config(drawables=[{"key": "drawable_key", "file_path": "overlay/assets/drawable/missing.xml"}])
