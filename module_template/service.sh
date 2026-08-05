@@ -39,7 +39,7 @@ set_conf_value() {
 }
 
 # 多用户首次安装
-if  [ "$(get_conf_value "$CONFIG"= "is_first_installation" "0")" = "1" ] && [ "$(get_conf_value "$CONFIG" "is_multi_user" "0")" = "1" ]; then
+if [ "$(get_conf_value "$CONFIG" "is_first_installation" "0")" = "1" ] && [ "$(get_conf_value "$CONFIG" "is_multi_user" "0")" = "1" ]; then
     for i in $(ls /data/user/ | awk 'NR>1'); do
         pm install-existing --user $i monet.com.tencent.wetype 2>/dev/null
         am force-stop --user $i com.tencent.wetype  2>/dev/null
