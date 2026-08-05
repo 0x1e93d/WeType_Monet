@@ -54,6 +54,12 @@ def get_module_zip_filename(module_version: int) -> str:
     return f"{MODULE_ID}_{format_module_version(module_version)}.zip"
 
 
+def get_official_apk_filename(apk_name: str, apk_code: str) -> str:
+    safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
+    safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
+    return f"微信输入法_{safe_name}({safe_code}).apk"
+
+
 def get_release_title(apk_name: str, module_version: int) -> str:
     return f"微信输入法_{apk_name}_{format_module_version(module_version)}"
 
@@ -682,8 +688,25 @@ def create_module_zip(module_version: int) -> Path:
     return zip_path
 
 
+def archive_official_apk(apk_name: str, apk_code: str) -> Path:
+    """将本次成功适配的官方 APK 复制为可发布的归档产物。"""
+    if not DOWNLOAD_APK_PATH.is_file():
+        raise FileNotFoundError(f"官方 APK 不存在，无法归档: {DOWNLOAD_APK_PATH}")
+
+    archive_path = OUT_DIR / get_official_apk_filename(apk_name, apk_code)
+    shutil.copy2(DOWNLOAD_APK_PATH, archive_path)
+    print(f"[+] 官方 APK 已归档: {archive_path}")
+    return archive_path
+
+
 def write_build_metadata(
-    module_version: str, version_code: str, apk_name: str, apk_code: str, config_path: Path, zip_path: Path
+    module_version: str,
+    version_code: str,
+    apk_name: str,
+    apk_code: str,
+    config_path: Path,
+    zip_path: Path,
+    official_apk_path: Path,
 ):
     metadata = {
         "module_version": module_version,
@@ -692,6 +715,7 @@ def write_build_metadata(
         "apk_code": apk_code,
         "config_file": config_path.relative_to(CONFIG_DIR).as_posix(),
         "zip_file": zip_path.name,
+        "official_apk_file": official_apk_path.name,
         "release_tag": module_version,
         "release_title": get_release_title(apk_name, int(version_code)),
         "build_time": current_build_time(),
@@ -730,7 +754,16 @@ def main():
 
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
         zip_path = create_module_zip(next_module_version)
-        write_build_metadata(module_version, version_code, apk_name, apk_code, config_path, zip_path)
+        official_apk_path = archive_official_apk(apk_name, apk_code)
+        write_build_metadata(
+            module_version,
+            version_code,
+            apk_name,
+            apk_code,
+            config_path,
+            zip_path,
+            official_apk_path,
+        )
         write_latest_config(
             next_module_version,
             get_base_sha256(),

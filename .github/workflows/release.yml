@@ -128,7 +128,9 @@ jobs:
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: wetype-monet-${{ steps.metadata.outputs.release_tag }}
-          path: out/*.zip
+          path: |
+            out/${{ steps.metadata.outputs.zip_file }}
+            out/${{ steps.metadata.outputs.official_apk_file }}
 
       - name: Create release
         if: steps.metadata.outputs.built == 'true'
@@ -149,8 +151,11 @@ jobs:
 
             ### 产物
             - `${{ steps.metadata.outputs.zip_file }}`：Magisk/KernelSU Overlay 模块
+            - `${{ steps.metadata.outputs.official_apk_file }}`：官方微信输入法原始安装包备份
             - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
-          files: out/*.zip
+          files: |
+            out/${{ steps.metadata.outputs.zip_file }}
+            out/${{ steps.metadata.outputs.official_apk_file }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 

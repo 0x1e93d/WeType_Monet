@@ -30,6 +30,7 @@ class BuildMappingTests(unittest.TestCase):
             "BASE_CONFIG_PATH": build.BASE_CONFIG_PATH,
             "TARGET_CONFIG_DIR": build.TARGET_CONFIG_DIR,
             "LATEST_CONFIG_PATH": build.LATEST_CONFIG_PATH,
+            "DOWNLOAD_APK_PATH": build.DOWNLOAD_APK_PATH,
         }
         build.PROJECT_ROOT = self.root
         build.CONFIG_DIR = self.root / "config"
@@ -42,6 +43,7 @@ class BuildMappingTests(unittest.TestCase):
         build.BASE_CONFIG_PATH = build.CONFIG_DIR / "base.json"
         build.TARGET_CONFIG_DIR = build.CONFIG_DIR / "targets"
         build.LATEST_CONFIG_PATH = build.CONFIG_DIR / "latest.json"
+        build.DOWNLOAD_APK_PATH = build.OUT_DIR / "wetype_latest.apk"
         build.TARGET_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         build.CONFIG_DIR.mkdir(parents=True, exist_ok=True)
         build.OUT_DIR.mkdir(parents=True)
@@ -206,6 +208,23 @@ class BuildMappingTests(unittest.TestCase):
         self.assertIn(f"updateJson={build.UPDATE_JSON_URL}", module_prop)
         self.assertEqual(build.get_module_zip_filename(2), "Wetype_Monet_v2.zip")
         self.assertEqual(build.get_release_title("3.5.4", 2), "微信输入法_3.5.4_v2")
+
+    def test_archive_official_apk_uses_release_filename(self):
+        build.DOWNLOAD_APK_PATH.write_bytes(b"official-apk")
+        config_path = build.TARGET_CONFIG_DIR / "3.5.2(55201).json"
+        zip_path = build.OUT_DIR / "Wetype_Monet_v2.zip"
+        config_path.write_text("{}", encoding="utf-8")
+        zip_path.write_bytes(b"module-zip")
+
+        archive_path = build.archive_official_apk("3.5.2", "55201")
+        build.write_build_metadata(
+            "v2", "2", "3.5.2", "55201", config_path, zip_path, archive_path
+        )
+
+        self.assertEqual(archive_path.name, "微信输入法_3.5.2(55201).apk")
+        self.assertEqual(archive_path.read_bytes(), b"official-apk")
+        metadata = json.loads(build.BUILD_METADATA_PATH.read_text(encoding="utf-8"))
+        self.assertEqual(metadata["official_apk_file"], archive_path.name)
 
     def test_write_update_json_uses_release_zip_url(self):
         build.write_update_json(2)
