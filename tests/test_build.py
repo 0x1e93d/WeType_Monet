@@ -22,20 +22,24 @@ class BuildMappingTests(unittest.TestCase):
             "PROJECT_ROOT": build.PROJECT_ROOT,
             "CONFIG_DIR": build.CONFIG_DIR,
             "OUT_DIR": build.OUT_DIR,
+            "BUILD_TMP_DIR": build.BUILD_TMP_DIR,
+            "BUILD_METADATA_PATH": build.BUILD_METADATA_PATH,
+            "UPDATE_JSON_PATH": build.UPDATE_JSON_PATH,
             "OVERLAY_DIR": build.OVERLAY_DIR,
             "DECOMPILE_DIR": build.DECOMPILE_DIR,
             "BASE_CONFIG_PATH": build.BASE_CONFIG_PATH,
-            "MODULE_CONFIG_PATH": build.MODULE_CONFIG_PATH,
             "TARGET_CONFIG_DIR": build.TARGET_CONFIG_DIR,
             "LATEST_CONFIG_PATH": build.LATEST_CONFIG_PATH,
         }
         build.PROJECT_ROOT = self.root
         build.CONFIG_DIR = self.root / "config"
         build.OUT_DIR = self.root / "out"
+        build.BUILD_TMP_DIR = build.OUT_DIR / "build_tmp"
+        build.BUILD_METADATA_PATH = build.OUT_DIR / "internal" / "build-metadata.json"
+        build.UPDATE_JSON_PATH = self.root / "wetype_monet.json"
         build.OVERLAY_DIR = self.root / "overlay"
         build.DECOMPILE_DIR = build.OUT_DIR / "decompiled_apk"
         build.BASE_CONFIG_PATH = build.CONFIG_DIR / "base.json"
-        build.MODULE_CONFIG_PATH = build.CONFIG_DIR / "module.json"
         build.TARGET_CONFIG_DIR = build.CONFIG_DIR / "targets"
         build.LATEST_CONFIG_PATH = build.CONFIG_DIR / "latest.json"
         build.TARGET_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
@@ -169,6 +173,10 @@ class BuildMappingTests(unittest.TestCase):
                     "release_date": "2026-01-01",
                     "config_file": "targets/1.0(1).json",
                 },
+                "release": {
+                    "tag": "v2",
+                    "title": "微信输入法_1.0_v2",
+                },
             },
         )
         self.assertEqual(build.get_latest_sha256(), ("targets/1.0(1).json", "a" * 64))
@@ -187,6 +195,30 @@ class BuildMappingTests(unittest.TestCase):
 
         self.assertEqual(build.get_base_sha256(), first_hash)
         self.assertEqual(build.get_next_module_version({"module_version": 1}), 2)
+
+    def test_module_metadata_uses_latest_integer_version(self):
+        build.BUILD_TMP_DIR.mkdir(parents=True)
+
+        self.assertEqual(build.generate_module_prop(2), ("v2", "2"))
+        module_prop = (build.BUILD_TMP_DIR / "module.prop").read_text(encoding="utf-8")
+        self.assertIn("version=v2", module_prop)
+        self.assertIn("versionCode=2", module_prop)
+        self.assertIn(f"updateJson={build.UPDATE_JSON_URL}", module_prop)
+        self.assertEqual(build.get_module_zip_filename(2), "Wetype_Monet_v2.zip")
+        self.assertEqual(build.get_release_title("3.5.4", 2), "微信输入法_3.5.4_v2")
+
+    def test_write_update_json_uses_release_zip_url(self):
+        build.write_update_json(2)
+
+        self.assertEqual(
+            json.loads(build.UPDATE_JSON_PATH.read_text(encoding="utf-8")),
+            {
+                "versionCode": 2,
+                "version": "v2",
+                "zipUrl": "https://github.com/0x1e93d/WeType_Monet/releases/download/v2/Wetype_Monet_v2.zip",
+                "changelog": "https://github.com/0x1e93d/WeType_Monet/releases/tag/v2",
+            },
+        )
 
     def test_fails_for_missing_drawable_source(self):
         self._write_base_config(drawables=[{"key": "drawable_key", "file_path": "overlay/assets/drawable/missing.xml"}])

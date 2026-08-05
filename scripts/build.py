@@ -13,7 +13,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
-from zoneinfo import ZoneInfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
@@ -27,9 +27,9 @@ DECOMPILE_DIR = OUT_DIR / "decompiled_apk"
 BUILD_METADATA_PATH = OUT_DIR / "internal" / "build-metadata.json"
 
 BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
-MODULE_CONFIG_PATH = CONFIG_DIR / "module.json"
 TARGET_CONFIG_DIR = CONFIG_DIR / "targets"
 LATEST_CONFIG_PATH = CONFIG_DIR / "latest.json"
+UPDATE_JSON_PATH = PROJECT_ROOT / "wetype_monet.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
 HLD_PACKAGE_PATH = Path("com/tencent/wetype/plugin/hld")
 
@@ -40,37 +40,30 @@ MODULE_ID = "Wetype_Monet"
 MODULE_NAME = "微信输入法 Monet"
 MODULE_AUTHOR = "酷安@1e93d"
 MODULE_DESCRIPTION = "为微信输入法提供 Monet 动态色彩主题。"
-UPDATE_JSON_URL = ""
-
-def get_git_info() -> tuple[str, str]:
-    """获取当前仓库提交次数与 Short Hash"""
-    try:
-        count = subprocess.check_output(
-            ["git", "rev-list", "--count", "HEAD"], 
-            stderr=subprocess.DEVNULL, text=True
-        ).strip()
-        git_hash = subprocess.check_output(
-            ["git", "rev-parse", "--short", "HEAD"], 
-            stderr=subprocess.DEVNULL, text=True
-        ).strip()
-        return count or "1", git_hash or "dev"
-    except Exception:
-        return "1", "dev"
+REPOSITORY_SLUG = os.environ.get("GITHUB_REPOSITORY", "0x1e93d/WeType_Monet")
+UPDATE_JSON_URL = f"https://raw.githubusercontent.com/{REPOSITORY_SLUG}/main/wetype_monet.json"
 
 
-def load_module_config() -> dict[str, str]:
-    """读取模块展示版本与静态元数据。"""
-    if not MODULE_CONFIG_PATH.exists():
-        raise FileNotFoundError(f"[!] 找不到模块配置文件: {MODULE_CONFIG_PATH}")
-    config = json.loads(MODULE_CONFIG_PATH.read_text(encoding="utf-8"))
-    version = str(config.get("version", "")).strip()
-    if not re.fullmatch(r"\d+\.\d+\.\d+", version):
-        raise ValueError("[!] module.json 的 version 必须为 MAJOR.MINOR.PATCH 格式")
-    return config
+def format_module_version(module_version: int) -> str:
+    if isinstance(module_version, bool) or not isinstance(module_version, int) or module_version < 1:
+        raise ValueError("[!] 模块版本必须为不小于 1 的整数")
+    return f"v{module_version}"
+
+
+def get_module_zip_filename(module_version: int) -> str:
+    return f"{MODULE_ID}_{format_module_version(module_version)}.zip"
+
+
+def get_release_title(apk_name: str, module_version: int) -> str:
+    return f"微信输入法_{apk_name}_{format_module_version(module_version)}"
 
 
 def current_build_time() -> str:
-    return datetime.now(ZoneInfo("Asia/Shanghai")).strftime("%Y-%m-%d %H:%M UTC+08:00")
+    try:
+        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+    except ZoneInfoNotFoundError:
+        now = datetime.now().astimezone()
+    return now.strftime("%Y-%m-%d %H:%M UTC+08:00")
 
 def find_sdk_tools() -> tuple[str, str, str, str]:
     """自动查找 aapt2, zipalign, apksigner 与 android.jar 路径"""
@@ -277,12 +270,30 @@ def write_latest_config(
             "release_date": release_date,
             "config_file": config_relative_path,
         },
+        "release": {
+            "tag": format_module_version(module_version),
+            "title": get_release_title(apk_name, module_version),
+        },
     }
     temp_path = LATEST_CONFIG_PATH.with_name(f"{LATEST_CONFIG_PATH.name}.tmp")
     temp_path.write_text(
         json.dumps(latest_config, ensure_ascii=False, indent=4) + "\n", encoding="utf-8"
     )
     temp_path.replace(LATEST_CONFIG_PATH)
+
+def write_update_json(module_version: int):
+    """原子写入 KernelSU/Magisk 在线更新清单。"""
+    version = format_module_version(module_version)
+    payload = {
+        "versionCode": module_version,
+        "version": version,
+        "zipUrl": f"https://github.com/{REPOSITORY_SLUG}/releases/download/{version}/{get_module_zip_filename(module_version)}",
+        "changelog": f"https://github.com/{REPOSITORY_SLUG}/releases/tag/{version}",
+    }
+    temp_path = UPDATE_JSON_PATH.with_name(f"{UPDATE_JSON_PATH.name}.tmp")
+    temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    temp_path.replace(UPDATE_JSON_PATH)
+
 
 def fetch_changelog_info() -> tuple[str, str, list[str]]:
     """正则抓取官网的版本号、更新日期和更新日志"""
@@ -632,13 +643,10 @@ def prepare_template():
     if TEMPLATE_DIR.exists():
         shutil.copytree(TEMPLATE_DIR, BUILD_TMP_DIR, dirs_exist_ok=True)
 
-def generate_module_prop() -> tuple[str, str]:
-    """生成模块属性清单 module.prop"""
-    git_count, _ = get_git_info()
-    module_config = load_module_config()
-    version_name = f"v{module_config['version']}"
-    version_code = os.environ.get("VERSION_CODE", git_count).strip() or git_count
-
+def generate_module_prop(module_version: int) -> tuple[str, str]:
+    """生成模块属性清单 module.prop。"""
+    version_name = format_module_version(module_version)
+    version_code = str(module_version)
     build_time = current_build_time()
     description = f"{MODULE_DESCRIPTION} [构建时间: {build_time}]"
 
@@ -648,27 +656,18 @@ def generate_module_prop() -> tuple[str, str]:
         f"version={version_name}",
         f"versionCode={version_code}",
         f"author={MODULE_AUTHOR}",
-        f"description={description}"
+        f"description={description}",
+        f"updateJson={UPDATE_JSON_URL}",
     ]
-    if UPDATE_JSON_URL.strip():
-        lines.append(f"updateJson={UPDATE_JSON_URL.strip()}")
-
     (BUILD_TMP_DIR / "module.prop").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"[+] module.prop 生成完成 (Version: {version_name}, Code: {version_code})")
     return version_name, version_code
 
-def create_module_zip(version_name: str, apk_name: str, apk_code: str) -> Path:
-    """打包输出 Magisk/KernelSU ZIP"""
+
+def create_module_zip(module_version: int) -> Path:
+    """打包输出 Magisk/KernelSU 模块 ZIP。"""
     print("[*] 打包 Magisk/KernelSU 刷机 ZIP 包...")
-    safe_apk_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
-    safe_apk_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
-    target_version = (
-        f"wetype-{safe_apk_name}({safe_apk_code})"
-        if safe_apk_code
-        else f"wetype-{safe_apk_name}"
-    )
-    zip_filename = f"{MODULE_ID}_{version_name}_{target_version}.zip"
-    zip_path = OUT_DIR / zip_filename
+    zip_path = OUT_DIR / get_module_zip_filename(module_version)
 
     if zip_path.exists():
         zip_path.unlink()
@@ -691,8 +690,10 @@ def write_build_metadata(
         "version_code": version_code,
         "apk_name": apk_name,
         "apk_code": apk_code,
-        "config_file": config_path.name,
+        "config_file": config_path.relative_to(CONFIG_DIR).as_posix(),
         "zip_file": zip_path.name,
+        "release_tag": module_version,
+        "release_title": get_release_title(apk_name, int(version_code)),
         "build_time": current_build_time(),
     }
     BUILD_METADATA_PATH.parent.mkdir(parents=True, exist_ok=True)
@@ -722,15 +723,16 @@ def main():
         print("\n[+] ===== 阶段 3: 生成 Overlay 资源并编译签名 APK =====")
         sync_src_resources(config_path)
         prepare_template()
-        module_version, version_code = generate_module_prop()
+        previous_state = get_latest_build_state()
+        next_module_version = get_next_module_version(previous_state)
+        module_version, version_code = generate_module_prop(next_module_version)
         build_overlay_apk()
 
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
-        zip_path = create_module_zip(module_version, apk_name, apk_code)
+        zip_path = create_module_zip(next_module_version)
         write_build_metadata(module_version, version_code, apk_name, apk_code, config_path, zip_path)
-        previous_state = get_latest_build_state()
         write_latest_config(
-            get_next_module_version(previous_state),
+            next_module_version,
             get_base_sha256(),
             sha256_str,
             apk_code,
@@ -738,6 +740,7 @@ def main():
             release_date,
             config_path,
         )
+        write_update_json(next_module_version)
 
         print("\n[✓] 所有步骤全流程顺利执行完毕！")
 

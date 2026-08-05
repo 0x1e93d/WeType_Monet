@@ -11,10 +11,11 @@
 
 ## 发布产物
 
-- `Wetype_Monet_*.zip`：用于 Magisk/KernelSU 的 Overlay 模块。
-- `版本号(版本代码).json`：该微信输入法版本的资源映射结果。
+- `Wetype_Monet_vN.zip`：用于 Magisk/KernelSU 的 Overlay 模块。
+- `wetype_monet.json`：KernelSU/Magisk 在线更新清单，会在每次成功发布后更新。
+- `config/targets/版本号(版本代码).json`：该微信输入法版本的资源映射结果，仅保存于仓库。
 
-Release 页面会记录模块版本、发布序号、适配的微信输入法版本和本次提交摘要。
+Release 页面会记录模块版本、适配的微信输入法版本和本次提交摘要。
 
 ## 自动构建
 
