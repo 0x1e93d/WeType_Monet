@@ -1,9 +1,13 @@
 {
     "version_name": "3.5.2",
     "version_code": "55201",
-    "release_date": "",
+    "release_date": "2026-07-22",
     "sha256": "71397a9fcb21123b229e68d7481d5a81240cf9b142b548c082ffcc07aa5ad621",
-    "changelog": [],
+    "changelog": [
+        "跨设备功能支持自定义设备名称",
+        "长按候选词，可将其固定至首位或删除",
+        "体验优化与问题修复"
+    ],
     "theme_colors": [
         {
             "unobfuscated_key": "White",

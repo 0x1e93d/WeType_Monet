@@ -10,7 +10,8 @@ import subprocess
 import sys
 import urllib.request
 import zipfile
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from html.parser import HTMLParser
 from pathlib import Path
 from xml.sax.saxutils import escape
 import xml.etree.ElementTree as ET
@@ -74,12 +75,16 @@ def get_release_title(apk_name: str, module_version: int) -> str:
     return f"微信输入法_{apk_name}_{format_module_version(module_version)}"
 
 
-def current_build_time() -> str:
+def china_timezone():
+    """Return China Standard Time without requiring the optional tzdata package."""
     try:
-        now = datetime.now(ZoneInfo("Asia/Shanghai"))
+        return ZoneInfo("Asia/Shanghai")
     except ZoneInfoNotFoundError:
-        now = datetime.now().astimezone()
-    return now.strftime("%Y-%m-%d %H:%M UTC+08:00")
+        return timezone(timedelta(hours=8))
+
+
+def current_build_time() -> str:
+    return datetime.now(china_timezone()).strftime("%Y-%m-%d %H:%M UTC+08:00")
 
 def find_sdk_tools() -> tuple[str, str, str, str]:
     """自动查找 aapt2, zipalign, apksigner 与 android.jar 路径"""
@@ -311,33 +316,143 @@ def write_update_json(module_version: int):
     temp_path.replace(UPDATE_JSON_PATH)
 
 
-def fetch_changelog_info() -> tuple[str, str, list[str]]:
-    """正则抓取官网的版本号、更新日期和更新日志"""
-    headers = {'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'}
-    req = urllib.request.Request(CHANGELOG_URL, headers=headers)
+class OfficialChangelogParser(HTMLParser):
+    """Extract release metadata and headings from the rendered changelog HTML."""
+
+    _METADATA_LABELS = {"发布版本:": "version", "发布日期:": "date"}
+
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self._tag_stack: list[str] = []
+        self._content_depth: int | None = None
+        self._heading_depth: int | None = None
+        self._heading_parts: list[str] = []
+        self._pending_metadata: str | None = None
+        self.version_text = ""
+        self.release_date = ""
+        self.changelog: list[str] = []
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]):
+        self._tag_stack.append(tag)
+        attributes = dict(attrs)
+        if tag == "div" and self._content_depth is None:
+            classes = (attributes.get("class") or "").split()
+            if "content" in classes:
+                self._content_depth = len(self._tag_stack)
+        if self._content_depth is not None and tag in {"h1", "h2", "h3", "h4", "h5", "h6"}:
+            self._heading_depth = len(self._tag_stack)
+            self._heading_parts = []
+
+    def handle_endtag(self, tag: str):
+        depth = len(self._tag_stack)
+        if self._heading_depth == depth and tag == self._tag_stack[-1]:
+            entry = re.sub(r"\s+", " ", "".join(self._heading_parts)).strip()
+            entry = re.sub(r"^[\-–—•*]\s*", "", entry).strip()
+            if entry:
+                self.changelog.append(entry)
+            self._heading_depth = None
+            self._heading_parts = []
+        if self._content_depth == depth and tag == "div":
+            self._content_depth = None
+        if self._tag_stack:
+            self._tag_stack.pop()
+
+    def handle_data(self, data: str):
+        text = re.sub(r"\s+", " ", data).strip()
+        if not text:
+            return
+        if self._heading_depth is not None:
+            self._heading_parts.append(text)
+        if text in self._METADATA_LABELS:
+            self._pending_metadata = self._METADATA_LABELS[text]
+            return
+        if self._pending_metadata == "version":
+            self.version_text = text
+            self._pending_metadata = None
+        elif self._pending_metadata == "date":
+            self.release_date = text
+            self._pending_metadata = None
+
+
+def parse_changelog_entries(content_html: str) -> list[str]:
+    """Parse headings from an official entry's content_html field."""
+    parser = OfficialChangelogParser()
+    parser.feed(f'<div class="content">{content_html}</div>')
+    parser.close()
+    return parser.changelog
+
+
+def parse_injected_changelog_data(html: str) -> tuple[str, str, list[str]]:
+    """Read the Android entry from the official page's embedded JSON payload."""
+    marker = "window.injectData="
+    payload_start = html.find(marker)
+    if payload_start < 0:
+        return "", "", []
+
     try:
-        with urllib.request.urlopen(req) as resp:
-            html = resp.read().decode('utf-8')
+        payload, _ = json.JSONDecoder().raw_decode(html[payload_start + len(marker):])
+        entries = [
+            entry for entry in payload.get("appChangelog", [])
+            if isinstance(entry, dict) and entry.get("platform") == 2
+        ]
+        latest_entry = max(
+            entries,
+            key=lambda entry: (int(entry.get("release_date", 0)), int(entry.get("id", 0))),
+        )
+        release_timestamp = int(latest_entry["release_date"])
+    except (KeyError, TypeError, ValueError, json.JSONDecodeError):
+        return "", "", []
 
-        v_match = re.search(r'发布版本:[\s\S]*?([\d\.]+)', html)
-        d_match = re.search(r'发布日期:[\s\S]*?(\d{4}-\d{2}-\d{2})', html)
-        
-        web_version = v_match.group(1).strip() if v_match else ""
-        release_date = d_match.group(1).strip() if d_match else ""
+    version_match = re.search(r"\d+(?:\.\d+)+", str(latest_entry.get("version", "")))
+    if not version_match:
+        return "", "", []
 
-        changelog = []
-        if content_match := re.search(r'<div[^>]*class=["\']content["\'][^>]*>([\s\S]*?)</div>', html):
-            h2_items = re.findall(r'<h2[^>]*>([\s\S]*?)</h2>', content_match.group(1))
-            for item in h2_items:
-                clean = re.sub(r'<[^>]+>', '', item)
-                clean = re.sub(r'^\s*[\-\–\—\•\*]\s*', '', clean).strip()
-                if clean:
-                    changelog.append(clean)
+    try:
+        release_date = datetime.fromtimestamp(
+            release_timestamp, tz=china_timezone()
+        ).date().isoformat()
+    except (OSError, OverflowError, ValueError):
+        return "", "", []
 
+    content_html = latest_entry.get("content_html")
+    changelog = parse_changelog_entries(content_html) if isinstance(content_html, str) else []
+    return version_match.group(0), release_date, changelog
+
+
+def parse_official_changelog_html(html: str) -> tuple[str, str, list[str]]:
+    """Parse the official page, preferring its stable embedded release data."""
+    version, release_date, changelog = parse_injected_changelog_data(html)
+    if version and release_date and changelog:
+        return version, release_date, changelog
+
+    # Keep a rendered-page fallback in case the official payload format changes.
+    parser = OfficialChangelogParser()
+    parser.feed(html)
+    parser.close()
+    version_match = re.search(r"\d+(?:\.\d+)+", parser.version_text)
+    release_date_match = re.search(r"\d{4}-\d{2}-\d{2}", parser.release_date)
+    return (
+        version_match.group(0) if version_match else "",
+        release_date_match.group(0) if release_date_match else "",
+        parser.changelog,
+    )
+
+
+def fetch_changelog_info() -> tuple[str, str, list[str]]:
+    """Download and parse the latest official Android changelog entry."""
+    headers = {
+        "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 "
+        "(KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+    }
+    request = urllib.request.Request(CHANGELOG_URL, headers=headers)
+    try:
+        with urllib.request.urlopen(request, timeout=30) as response:
+            html = response.read().decode("utf-8")
+        web_version, release_date, changelog = parse_official_changelog_html(html)
         print(f"[+] 官网版本: '{web_version}' | 日期: '{release_date}' | 日志: {len(changelog)} 条")
         return web_version, release_date, changelog
-    except Exception as e:
-        print(f"[!] 抓取官网日志失败: {e}")
+    except Exception as error:
+        print(f"[!] 抓取官网日志失败: {error}")
         return "", "", []
 
 def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]] | None:

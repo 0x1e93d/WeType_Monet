@@ -236,6 +236,81 @@ class BuildMappingTests(unittest.TestCase):
         self.assertEqual(metadata["official_apk_file"], archive_path.name)
         self.assertEqual(metadata["monet_apk_file"], monet_path.name)
 
+    def test_parses_official_changelog_content(self):
+        html = """
+        <div class="meta"><span class="label">发布日期:</span>2026-07-22</div>
+        <div class="meta"><span class="label">发布版本:</span>3.5.2 for Android</div>
+        <div class="content" data-nosnippet="true">
+          <h2>- 跨设备功能支持自定义设备名称</h2>
+          <h2>- 长按候选词，可将其固定至首位或删除</h2>
+          <h2><span>- 体验优化与问题修复</span></h2>
+        </div>
+        """
+
+        version, release_date, changelog = build.parse_official_changelog_html(html)
+
+        self.assertEqual(version, "3.5.2")
+        self.assertEqual(release_date, "2026-07-22")
+        self.assertEqual(
+            changelog,
+            [
+                "跨设备功能支持自定义设备名称",
+                "长按候选词，可将其固定至首位或删除",
+                "体验优化与问题修复",
+            ],
+        )
+
+    def test_prefers_embedded_android_changelog_data(self):
+        payload = {
+            "appChangelog": [
+                {
+                    "id": 160,
+                    "platform": 1,
+                    "version": "9.9.9",
+                    "release_date": 1784649600,
+                    "content_html": "<h2>- iOS 更新</h2>",
+                },
+                {
+                    "id": 159,
+                    "platform": 2,
+                    "version": "3.5.0",
+                    "release_date": 1781611200,
+                    "content_html": "<h2>- Android 旧版更新</h2>",
+                },
+                {
+                    "id": 160,
+                    "platform": 2,
+                    "version": "3.5.2",
+                    "release_date": 1784649600,
+                    "content_html": "<h2>- 跨设备功能支持自定义设备名称</h2>",
+                },
+            ]
+        }
+        html = f"<script>window.injectData={json.dumps(payload, ensure_ascii=False)}</script>"
+
+        version, release_date, changelog = build.parse_official_changelog_html(html)
+
+        self.assertEqual(version, "3.5.2")
+        self.assertEqual(release_date, "2026-07-22")
+        self.assertEqual(changelog, ["跨设备功能支持自定义设备名称"])
+
+    def test_target_config_preserves_official_changelog(self):
+        self._write_base_config()
+
+        config_path = build.generate_version_config(
+            "a" * 64,
+            "55201",
+            "3.5.2",
+            "2026-07-22",
+            ["跨设备功能支持自定义设备名称", "体验优化与问题修复"],
+        )
+
+        payload = json.loads(config_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            payload["changelog"],
+            ["跨设备功能支持自定义设备名称", "体验优化与问题修复"],
+        )
+
     def test_apply_monet_resources_replaces_target_values_and_drawable(self):
         config_path = build.TARGET_CONFIG_DIR / "1.0(1).json"
         config_path.write_text(
