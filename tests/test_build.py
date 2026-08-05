@@ -90,6 +90,13 @@ class BuildMappingTests(unittest.TestCase):
         source_drawable = self.root / "overlay" / "assets" / "drawable" / "source.xml"
         source_drawable.parent.mkdir(parents=True)
         source_drawable.write_text('<vector xmlns:android="http://schemas.android.com/apk/res/android" />', encoding="utf-8")
+        values_dir = build.DECOMPILE_DIR / "res" / "values"
+        values_dir.mkdir(parents=True, exist_ok=True)
+        (values_dir / "colors.xml").write_text('<resources><color name="a">#000000</color></resources>', encoding="utf-8")
+        (values_dir / "strings.xml").write_text('<resources><string name="b">old value</string></resources>', encoding="utf-8")
+        drawable_dir = build.DECOMPILE_DIR / "res" / "drawable"
+        drawable_dir.mkdir(parents=True)
+        (drawable_dir / "c.xml").write_text('<vector />', encoding="utf-8")
 
     def _write_base_config(self, drawables=None):
         payload = {
@@ -217,14 +224,41 @@ class BuildMappingTests(unittest.TestCase):
         zip_path.write_bytes(b"module-zip")
 
         archive_path = build.archive_official_apk("3.5.2", "55201")
+        monet_path = build.OUT_DIR / "微信输入法_Monet_3.5.2(55201)_v2.apk"
+        monet_path.write_bytes(b"monet-apk")
         build.write_build_metadata(
-            "v2", "2", "3.5.2", "55201", config_path, zip_path, archive_path
+            "v2", "2", "3.5.2", "55201", config_path, zip_path, archive_path, monet_path
         )
 
         self.assertEqual(archive_path.name, "微信输入法_3.5.2(55201).apk")
         self.assertEqual(archive_path.read_bytes(), b"official-apk")
         metadata = json.loads(build.BUILD_METADATA_PATH.read_text(encoding="utf-8"))
         self.assertEqual(metadata["official_apk_file"], archive_path.name)
+        self.assertEqual(metadata["monet_apk_file"], monet_path.name)
+
+    def test_apply_monet_resources_replaces_target_values_and_drawable(self):
+        config_path = build.TARGET_CONFIG_DIR / "1.0(1).json"
+        config_path.write_text(
+            json.dumps(
+                {
+                    "theme_colors": [{"obfuscated_key": "a", "light": "#112233", "night": "#445566"}],
+                    "theme_strings": [{"obfuscated_key": "b", "value": "new value"}],
+                    "theme_drawables": [{"obfuscated_key": "c", "file_path": "overlay/assets/drawable/source.xml"}],
+                }
+            ),
+            encoding="utf-8",
+        )
+
+        build.apply_monet_resources(config_path)
+
+        colors = (build.DECOMPILE_DIR / "res" / "values" / "colors.xml").read_text(encoding="utf-8")
+        strings = (build.DECOMPILE_DIR / "res" / "values" / "strings.xml").read_text(encoding="utf-8")
+        night = (build.DECOMPILE_DIR / "res" / "values-night" / "wetype_monet.xml").read_text(encoding="utf-8")
+        drawable = (build.DECOMPILE_DIR / "res" / "drawable" / "c.xml").read_text(encoding="utf-8")
+        self.assertIn("#112233", colors)
+        self.assertIn("new value", strings)
+        self.assertIn("#445566", night)
+        self.assertIn("xmlns:android", drawable)
 
     def test_write_update_json_uses_release_zip_url(self):
         build.write_update_json(2)

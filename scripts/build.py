@@ -13,6 +13,7 @@ import zipfile
 from datetime import datetime
 from pathlib import Path
 from xml.sax.saxutils import escape
+import xml.etree.ElementTree as ET
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 SCRIPT_DIR = Path(__file__).resolve().parent
@@ -31,6 +32,9 @@ TARGET_CONFIG_DIR = CONFIG_DIR / "targets"
 LATEST_CONFIG_PATH = CONFIG_DIR / "latest.json"
 UPDATE_JSON_PATH = PROJECT_ROOT / "wetype_monet.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
+PUBLIC_SIGNING_BKS_PATH = PROJECT_ROOT / "signing" / "LSPatch.bks"
+PUBLIC_SIGNING_PASSWORD = "114514"
+PUBLIC_SIGNING_ALIAS = "114514"
 HLD_PACKAGE_PATH = Path("com/tencent/wetype/plugin/hld")
 
 APK_URL = "https://z.weixin.qq.com/android/download?channel=latest"
@@ -58,6 +62,12 @@ def get_official_apk_filename(apk_name: str, apk_code: str) -> str:
     safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
     return f"微信输入法_{safe_name}({safe_code}).apk"
+
+
+def get_monet_apk_filename(apk_name: str, apk_code: str, module_version: int) -> str:
+    safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
+    safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
+    return f"微信输入法_Monet_{safe_name}({safe_code})_{format_module_version(module_version)}.apk"
 
 
 def get_release_title(apk_name: str, module_version: int) -> str:
@@ -571,6 +581,158 @@ def sync_src_resources(config_file: Path):
 
     print(f"[+] Overlay 资源已同步至: {res_dir}")
 
+
+def get_value_resource_dirs(*, night: bool) -> list[Path]:
+    res_dir = DECOMPILE_DIR / "res"
+    if not res_dir.is_dir():
+        raise FileNotFoundError(f"[!] 找不到已解包资源目录: {res_dir}")
+    dirs = []
+    for path in res_dir.iterdir():
+        if not path.is_dir() or not path.name.startswith("values"):
+            continue
+        is_night = path.name == "values-night" or path.name.startswith("values-night-")
+        if is_night == night:
+            dirs.append(path)
+    return sorted(dirs)
+
+
+def replace_named_value_resources(resource_type: str, replacements: dict[str, str], value_dirs: list[Path]) -> set[str]:
+    found: set[str] = set()
+    for value_dir in value_dirs:
+        for xml_path in sorted(value_dir.rglob("*.xml")):
+            if xml_path.name == "public.xml":
+                continue
+            try:
+                tree = ET.parse(xml_path)
+            except ET.ParseError as error:
+                raise RuntimeError(f"[!] 无法解析资源 XML: {xml_path}") from error
+            changed = False
+            for element in tree.getroot():
+                element_type = element.tag.rsplit("}", 1)[-1]
+                is_resource = element_type == resource_type or (element_type == "item" and element.get("type") == resource_type)
+                resource_name = element.get("name")
+                if is_resource and resource_name in replacements:
+                    element.text = replacements[resource_name]
+                    found.add(resource_name)
+                    changed = True
+            if changed:
+                tree.write(xml_path, encoding="utf-8", xml_declaration=True)
+    return found
+
+
+def replace_monet_drawables(items: list[dict]):
+    res_dir = DECOMPILE_DIR / "res"
+    for item in items:
+        target_key = item["obfuscated_key"]
+        source_path = PROJECT_ROOT / item["file_path"]
+        if not source_path.is_file():
+            raise FileNotFoundError(f"[!] Drawable 源文件不存在: {source_path}")
+        candidates = []
+        for drawable_dir in sorted(res_dir.glob("drawable*")):
+            if drawable_dir.is_dir():
+                candidates.extend(path for path in drawable_dir.glob(f"{target_key}.*") if path.is_file())
+        if not candidates:
+            raise FileNotFoundError(f"[!] 未在原始 APK 中找到 Drawable: {target_key}")
+        for destination in candidates:
+            if destination.suffix.lower() != source_path.suffix.lower():
+                raise RuntimeError(f"[!] Drawable 格式不匹配: {target_key} ({destination.suffix} != {source_path.suffix})")
+            shutil.copy2(source_path, destination)
+
+
+def apply_monet_resources(config_file: Path):
+    """将目标映射中的 Monet 资源直接写回已解包的微信输入法 APK。"""
+    config_data = json.loads(config_file.read_text(encoding="utf-8"))
+    day_colors = {item["obfuscated_key"]: item["light"] for item in config_data.get("theme_colors", []) if item.get("light")}
+    night_colors = {item["obfuscated_key"]: item["night"] for item in config_data.get("theme_colors", []) if item.get("night")}
+    strings = {item["obfuscated_key"]: item.get("value", "") for item in config_data.get("theme_strings", [])}
+    day_found = replace_named_value_resources("color", day_colors, get_value_resource_dirs(night=False))
+    missing_day = sorted(set(day_colors) - day_found)
+    if missing_day:
+        raise RuntimeError(f"[!] 未在原始 APK 中找到日间颜色资源: {', '.join(missing_day)}")
+    night_found = replace_named_value_resources("color", night_colors, get_value_resource_dirs(night=True))
+    missing_night = {key: night_colors[key] for key in night_colors if key not in night_found}
+    if missing_night:
+        entries = [f'    <color name="{name}">{escape(value)}</color>' for name, value in missing_night.items()]
+        write_xml_resource_file(DECOMPILE_DIR / "res" / "values-night" / "wetype_monet.xml", entries)
+    string_found = replace_named_value_resources("string", strings, get_value_resource_dirs(night=False))
+    missing_strings = sorted(set(strings) - string_found)
+    if missing_strings:
+        raise RuntimeError(f"[!] 未在原始 APK 中找到字符串资源: {', '.join(missing_strings)}")
+    replace_monet_drawables(config_data.get("theme_drawables", []))
+    print("[+] Monet 资源已写回已解包的微信输入法 APK")
+
+
+def find_keytool() -> str:
+    configured = os.environ.get("KEYTOOL_PATH")
+    if configured and Path(configured).is_file():
+        return configured
+    executable = "keytool.exe" if os.name == "nt" else "keytool"
+    java_home = os.environ.get("JAVA_HOME")
+    if java_home:
+        candidate = Path(java_home) / "bin" / executable
+        if candidate.is_file():
+            return str(candidate)
+    located = shutil.which(executable)
+    if located:
+        return located
+    raise RuntimeError("未找到 keytool，请配置 JAVA_HOME 或 KEYTOOL_PATH")
+
+
+def prepare_public_signing_keystore() -> Path:
+    """将仓库中的公开 BKS 密钥临时转换为 apksigner 可直接使用的 PKCS#12。"""
+    if not PUBLIC_SIGNING_BKS_PATH.is_file():
+        raise FileNotFoundError(f"[!] 找不到公开签名密钥: {PUBLIC_SIGNING_BKS_PATH}")
+    provider_path = os.environ.get("BCPROV_JAR_PATH")
+    if not provider_path or not Path(provider_path).is_file():
+        raise RuntimeError("未找到 Bouncy Castle Provider，请配置 BCPROV_JAR_PATH")
+    keystore_path = OUT_DIR / "internal" / "monet-release.p12"
+    keystore_path.parent.mkdir(parents=True, exist_ok=True)
+    if keystore_path.exists():
+        keystore_path.unlink()
+    command = [find_keytool(), "-importkeystore", "-noprompt", "-srckeystore", str(PUBLIC_SIGNING_BKS_PATH), "-srcstoretype", "BKS", "-srcstorepass", PUBLIC_SIGNING_PASSWORD, "-srcalias", PUBLIC_SIGNING_ALIAS, "-destkeystore", str(keystore_path), "-deststoretype", "PKCS12", "-deststorepass", PUBLIC_SIGNING_PASSWORD, "-destkeypass", PUBLIC_SIGNING_PASSWORD, "-destalias", PUBLIC_SIGNING_ALIAS, "-providerclass", "org.bouncycastle.jce.provider.BouncyCastleProvider", "-providerpath", provider_path]
+    result = subprocess.run(command, capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    if result.returncode != 0:
+        raise RuntimeError(f"公开 BKS 密钥转换失败:\n{result.stderr or result.stdout}")
+    return keystore_path
+
+
+def ensure_original_package_name():
+    manifest_path = DECOMPILE_DIR / "AndroidManifest.xml"
+    manifest = manifest_path.read_text(encoding="utf-8", errors="ignore")
+    package_match = re.search(r'<manifest\b[^>]*\bpackage=["\']([^"\']+)["\']', manifest)
+    if not package_match:
+        raise RuntimeError(f"[!] 无法读取已解包 APK 的包名: {manifest_path}")
+    if package_match.group(1) != "com.tencent.wetype":
+        raise RuntimeError(f"[!] 原始包名异常: {package_match.group(1)}")
+
+
+def build_monet_apk(config_file: Path, apk_name: str, apk_code: str, module_version: int) -> Path:
+    """重建、发布签名并校验保持原包名的 Monet 微信输入法 APK。"""
+    _, zipalign, apksigner, _ = find_sdk_tools()
+    ensure_original_package_name()
+    apply_monet_resources(config_file)
+    unsigned_apk = OUT_DIR / "monet-unsigned.apk"
+    aligned_apk = OUT_DIR / "monet-aligned.apk"
+    final_apk = OUT_DIR / get_monet_apk_filename(apk_name, apk_code, module_version)
+    for path in (unsigned_apk, aligned_apk, final_apk, Path(f"{final_apk}.idsig")):
+        if path.exists():
+            path.unlink()
+    print("[*] 重建 Monet 微信输入法 APK (apktool)...")
+    build_result = subprocess.run(["apktool", "b", str(DECOMPILE_DIR), "-o", str(unsigned_apk)], capture_output=True, text=True, encoding="utf-8", errors="ignore")
+    if build_result.returncode != 0:
+        raise RuntimeError(f"Apktool 重建 Monet APK 失败:\n{build_result.stderr or build_result.stdout}")
+    subprocess.run([str(zipalign), "-p", "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
+    keystore_path = prepare_public_signing_keystore()
+    sign_command = [str(apksigner), "sign", "--ks", str(keystore_path), "--ks-type", "PKCS12", "--ks-pass", f"pass:{PUBLIC_SIGNING_PASSWORD}", "--key-pass", f"pass:{PUBLIC_SIGNING_PASSWORD}", "--ks-key-alias", PUBLIC_SIGNING_ALIAS, "--v1-signing-enabled", "true", "--v2-signing-enabled", "true", "--v3-signing-enabled", "true", "--v4-signing-enabled", "false", "--out", str(final_apk), str(aligned_apk)]
+    subprocess.run(sign_command, check=True)
+    subprocess.run([str(apksigner), "verify", "--verbose", "--print-certs", str(final_apk)], check=True)
+    for path in (unsigned_apk, aligned_apk, Path(f"{final_apk}.idsig"), keystore_path):
+        if path.exists():
+            path.unlink()
+    print(f"[+] Monet 微信输入法 APK 生成成功 -> {final_apk}")
+    return final_apk
+
+
 def build_overlay_apk():
     """编译并签名 Overlay APK"""
     aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
@@ -707,6 +869,7 @@ def write_build_metadata(
     config_path: Path,
     zip_path: Path,
     official_apk_path: Path,
+    monet_apk_path: Path,
 ):
     metadata = {
         "module_version": module_version,
@@ -716,6 +879,7 @@ def write_build_metadata(
         "config_file": config_path.relative_to(CONFIG_DIR).as_posix(),
         "zip_file": zip_path.name,
         "official_apk_file": official_apk_path.name,
+        "monet_apk_file": monet_apk_path.name,
         "release_tag": module_version,
         "release_title": get_release_title(apk_name, int(version_code)),
         "build_time": current_build_time(),
@@ -751,6 +915,7 @@ def main():
         next_module_version = get_next_module_version(previous_state)
         module_version, version_code = generate_module_prop(next_module_version)
         build_overlay_apk()
+        monet_apk_path = build_monet_apk(config_path, apk_name, apk_code, next_module_version)
 
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
         zip_path = create_module_zip(next_module_version)
@@ -763,6 +928,7 @@ def main():
             config_path,
             zip_path,
             official_apk_path,
+            monet_apk_path,
         )
         write_latest_config(
             next_module_version,

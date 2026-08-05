@@ -80,6 +80,13 @@ jobs:
           echo "${APKTOOL_JAR_SHA256}  /tmp/apktool.jar" | sha256sum --check --status
           sudo install -m 0755 /tmp/apktool /usr/local/bin/apktool
           sudo install -m 0644 /tmp/apktool.jar /usr/local/bin/apktool.jar
+          BCPROV_VER="1.78.1"
+          BCPROV_SHA256="add5915e6acfc6ab5836e1fd8a5e21c6488536a8c1f21f386eeb3bf280b702d7"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/${BCPROV_VER}/bcprov-jdk18on-${BCPROV_VER}.jar" \
+            --output /tmp/bcprov.jar
+          echo "${BCPROV_SHA256}  /tmp/bcprov.jar" | sha256sum --check --status
+          echo "BCPROV_JAR_PATH=/tmp/bcprov.jar" >> "$GITHUB_ENV"
 
       - name: Configure Git user
         run: |
@@ -131,6 +138,7 @@ jobs:
           path: |
             out/${{ steps.metadata.outputs.zip_file }}
             out/${{ steps.metadata.outputs.official_apk_file }}
+            out/${{ steps.metadata.outputs.monet_apk_file }}
 
       - name: Create release
         if: steps.metadata.outputs.built == 'true'
@@ -152,10 +160,12 @@ jobs:
             ### 产物
             - `${{ steps.metadata.outputs.zip_file }}`：Magisk/KernelSU Overlay 模块
             - `${{ steps.metadata.outputs.official_apk_file }}`：官方微信输入法原始安装包备份
+            - `${{ steps.metadata.outputs.monet_apk_file }}`：保持原包名的 Monet 微信输入法
             - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
           files: |
             out/${{ steps.metadata.outputs.zip_file }}
             out/${{ steps.metadata.outputs.official_apk_file }}
+            out/${{ steps.metadata.outputs.monet_apk_file }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
