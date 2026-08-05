@@ -128,7 +128,8 @@ class BuildMappingTests(unittest.TestCase):
         (build.CONFIG_DIR / "1.0(1).json").write_text('{"sha256": "older"}', encoding="utf-8")
         (build.CONFIG_DIR / "2.0(2).json").write_text('{"sha256": "expected"}', encoding="utf-8")
         build.LATEST_CONFIG_PATH.write_text(
-            '{"sha256": "expected", "config_file": "2.0(2).json"}', encoding="utf-8"
+            '{"sha256": "expected", "config_file": "2.0(2).json", "schema_version": 1}',
+            encoding="utf-8",
         )
 
         self.assertEqual(build.get_latest_sha256(), ("2.0(2).json", "expected"))
@@ -137,7 +138,7 @@ class BuildMappingTests(unittest.TestCase):
         config_path = build.CONFIG_DIR / "1.0(1).json"
         config_path.write_text("{}", encoding="utf-8")
 
-        build.write_latest_config("expected", "1", "1.0", "2026-01-01", config_path)
+        build.write_latest_config("expected", "1", "1.0", "2026-01-01", config_path, 1)
 
         self.assertEqual(
             json.loads(build.LATEST_CONFIG_PATH.read_text(encoding="utf-8")),
@@ -147,9 +148,17 @@ class BuildMappingTests(unittest.TestCase):
                 "release_date": "2026-01-01",
                 "sha256": "expected",
                 "config_file": "1.0(1).json",
+                "schema_version": 1,
             },
         )
         self.assertEqual(build.get_latest_sha256(), ("1.0(1).json", "expected"))
+
+    def test_should_build_only_for_apk_or_schema_updates(self):
+        self.assertFalse(build.should_build("same", 1, "same", 1))
+        self.assertTrue(build.should_build("changed", 1, "same", 1))
+        self.assertTrue(build.should_build("same", 2, "same", 1))
+        self.assertFalse(build.should_build("same", 1, "same", 2))
+        self.assertTrue(build.should_build("same", 1, None, None))
 
     def test_fails_for_missing_drawable_source(self):
         self._write_base_config(drawables=[{"key": "drawable_key", "file_path": "overlay/assets/drawable/missing.xml"}])

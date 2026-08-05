@@ -174,30 +174,74 @@ def calculate_sha256(file_path: Path) -> str:
             sha256.update(chunk)
     return sha256.hexdigest()
 
-def get_latest_sha256() -> tuple[str | None, str | None]:
-    """读取最后一次成功构建的 APK SHA256。"""
+def get_base_schema_version() -> int:
+    """读取基础资源配置的 schema 版本。"""
+    if not BASE_CONFIG_PATH.is_file():
+        raise FileNotFoundError(f"[!] 找不到基础配置文件: {BASE_CONFIG_PATH}")
+    base_config = json.loads(BASE_CONFIG_PATH.read_text(encoding="utf-8"))
+    schema_version = base_config.get("schema_version")
+    if isinstance(schema_version, bool) or not isinstance(schema_version, int) or schema_version < 1:
+        raise ValueError("[!] base.json 的 schema_version 必须为不小于 1 的整数")
+    return schema_version
+
+
+def get_latest_build_state() -> tuple[str, str, int | None] | None:
+    """读取最后一次成功构建的 APK 与资源配置状态。"""
     if not LATEST_CONFIG_PATH.is_file():
-        return None, None
+        return None
 
     try:
         latest_config = json.loads(LATEST_CONFIG_PATH.read_text(encoding="utf-8"))
         config_file = latest_config.get("config_file")
         sha256_str = latest_config.get("sha256")
+        schema_version = latest_config.get("schema_version")
         if not isinstance(config_file, str) or not isinstance(sha256_str, str):
-            return None, None
+            return None
+        if isinstance(schema_version, bool) or not isinstance(schema_version, (int, type(None))):
+            return None
 
         config_name = Path(config_file)
         if config_name.name != config_file or config_name.suffix != ".json":
-            return None, None
+            return None
         if not (CONFIG_DIR / config_name).is_file():
-            return None, None
-        return config_file, sha256_str
+            return None
+        return config_file, sha256_str, schema_version
     except (OSError, json.JSONDecodeError):
+        return None
+
+
+def get_latest_sha256() -> tuple[str | None, str | None]:
+    """读取最后一次成功构建的 APK SHA256。"""
+    latest_state = get_latest_build_state()
+    if latest_state is None:
         return None, None
+    config_file, sha256_str, _ = latest_state
+    return config_file, sha256_str
+
+
+def should_build(
+    new_sha256: str,
+    current_schema_version: int,
+    last_sha256: str | None,
+    last_schema_version: int | None,
+) -> bool:
+    """仅在 APK 或资源配置 schema 更新时请求构建。"""
+    if last_sha256 is None:
+        return True
+    return (
+        new_sha256.lower() != last_sha256.lower()
+        or last_schema_version is None
+        or current_schema_version > last_schema_version
+    )
 
 
 def write_latest_config(
-    sha256_str: str, apk_code: str, apk_name: str, release_date: str, config_path: Path
+    sha256_str: str,
+    apk_code: str,
+    apk_name: str,
+    release_date: str,
+    config_path: Path,
+    schema_version: int,
 ):
     """原子写入最后一次成功构建的 APK 状态。"""
     latest_config = {
@@ -206,6 +250,7 @@ def write_latest_config(
         "release_date": release_date,
         "sha256": sha256_str,
         "config_file": config_path.name,
+        "schema_version": schema_version,
     }
     temp_path = LATEST_CONFIG_PATH.with_name(f"{LATEST_CONFIG_PATH.name}.tmp")
     temp_path.write_text(
@@ -254,13 +299,23 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]] | None:
     new_sha256 = calculate_sha256(DOWNLOAD_APK_PATH)
     print(f"[+] 下载完成，当前 APK SHA256: {new_sha256}")
 
-    latest_file, last_sha256 = get_latest_sha256()
-    force_build = os.environ.get("FORCE_BUILD", "").lower() in {"1", "true", "yes"}
-    if last_sha256 and last_sha256.lower() == new_sha256.lower() and not force_build:
-        print(f"[=] 版本哈希与本地历史记录 ({latest_file}) 一致，无需构建。")
+    current_schema_version = get_base_schema_version()
+    latest_state = get_latest_build_state()
+    latest_file, last_sha256, last_schema_version = latest_state or (None, None, None)
+    if not should_build(new_sha256, current_schema_version, last_sha256, last_schema_version):
+        print(
+            f"[=] APK 哈希与本地历史记录 ({latest_file}) 一致，"
+            f"schema_version 未提高（{current_schema_version}），无需构建。"
+        )
         return None
-    if force_build and last_sha256 and last_sha256.lower() == new_sha256.lower():
-        print("[*] 上游 APK 未变化，按 FORCE_BUILD 继续构建。")
+    if last_sha256 and last_sha256.lower() == new_sha256.lower():
+        if last_schema_version is None:
+            print("[*] 上游 APK 未变化，但本地构建状态缺少 schema_version，继续构建。")
+        else:
+            print(
+                "[*] 上游 APK 未变化，但 base.json 的 schema_version "
+                f"从 {last_schema_version} 提高到 {current_schema_version}，继续构建。"
+            )
 
     print(f"[*] 开始使用 Apktool 解包 APK -> {DECOMPILE_DIR}")
     if DECOMPILE_DIR.exists():
@@ -659,7 +714,14 @@ def main():
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
         zip_path = create_module_zip(module_version, apk_name, apk_code)
         write_build_metadata(module_version, version_code, apk_name, apk_code, config_path, zip_path)
-        write_latest_config(sha256_str, apk_code, apk_name, release_date, config_path)
+        write_latest_config(
+            sha256_str,
+            apk_code,
+            apk_name,
+            release_date,
+            config_path,
+            get_base_schema_version(),
+        )
 
         print("\n[✓] 所有步骤全流程顺利执行完毕！")
 

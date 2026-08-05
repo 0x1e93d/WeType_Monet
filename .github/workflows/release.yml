@@ -92,7 +92,6 @@ jobs:
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
           VERSION_CODE: ${{ github.run_number }}
-          FORCE_BUILD: ${{ github.event_name != 'schedule' }}
         run: python scripts/build.py
 
       - name: Read build metadata
