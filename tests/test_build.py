@@ -26,6 +26,7 @@ class BuildMappingTests(unittest.TestCase):
             "DECOMPILE_DIR": build.DECOMPILE_DIR,
             "BASE_CONFIG_PATH": build.BASE_CONFIG_PATH,
             "MODULE_CONFIG_PATH": build.MODULE_CONFIG_PATH,
+            "LATEST_CONFIG_PATH": build.LATEST_CONFIG_PATH,
         }
         build.PROJECT_ROOT = self.root
         build.CONFIG_DIR = self.root / "config"
@@ -34,6 +35,7 @@ class BuildMappingTests(unittest.TestCase):
         build.DECOMPILE_DIR = build.OUT_DIR / "decompiled_apk"
         build.BASE_CONFIG_PATH = build.CONFIG_DIR / "base.json"
         build.MODULE_CONFIG_PATH = build.CONFIG_DIR / "module.json"
+        build.LATEST_CONFIG_PATH = build.CONFIG_DIR / "latest.json"
         build.CONFIG_DIR.mkdir(parents=True)
         build.OUT_DIR.mkdir(parents=True)
         self._write_fixture_apk()
@@ -122,11 +124,31 @@ class BuildMappingTests(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "missing_drawable"):
             build.generate_version_config("hash", "1", "1.0", "2026-01-01", [])
 
-    def test_latest_hash_ignores_base_and_module_config(self):
-        (build.CONFIG_DIR / "1.0(1).json").write_text('{"sha256": "expected"}', encoding="utf-8")
-        build.BASE_CONFIG_PATH.write_text("{}", encoding="utf-8")
-        build.MODULE_CONFIG_PATH.write_text('{"version": "1.0.0"}', encoding="utf-8")
+    def test_latest_hash_uses_explicit_state_file(self):
+        (build.CONFIG_DIR / "1.0(1).json").write_text('{"sha256": "older"}', encoding="utf-8")
+        (build.CONFIG_DIR / "2.0(2).json").write_text('{"sha256": "expected"}', encoding="utf-8")
+        build.LATEST_CONFIG_PATH.write_text(
+            '{"sha256": "expected", "config_file": "2.0(2).json"}', encoding="utf-8"
+        )
 
+        self.assertEqual(build.get_latest_sha256(), ("2.0(2).json", "expected"))
+
+    def test_write_latest_config_records_successful_build(self):
+        config_path = build.CONFIG_DIR / "1.0(1).json"
+        config_path.write_text("{}", encoding="utf-8")
+
+        build.write_latest_config("expected", "1", "1.0", "2026-01-01", config_path)
+
+        self.assertEqual(
+            json.loads(build.LATEST_CONFIG_PATH.read_text(encoding="utf-8")),
+            {
+                "version_name": "1.0",
+                "version_code": "1",
+                "release_date": "2026-01-01",
+                "sha256": "expected",
+                "config_file": "1.0(1).json",
+            },
+        )
         self.assertEqual(build.get_latest_sha256(), ("1.0(1).json", "expected"))
 
     def test_fails_for_missing_drawable_source(self):

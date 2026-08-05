@@ -28,6 +28,7 @@ BUILD_METADATA_PATH = OUT_DIR / "internal" / "build-metadata.json"
 
 BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
 MODULE_CONFIG_PATH = CONFIG_DIR / "module.json"
+LATEST_CONFIG_PATH = CONFIG_DIR / "latest.json"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
 HLD_PACKAGE_PATH = Path("com/tencent/wetype/plugin/hld")
 
@@ -174,17 +175,43 @@ def calculate_sha256(file_path: Path) -> str:
     return sha256.hexdigest()
 
 def get_latest_sha256() -> tuple[str | None, str | None]:
-    """获取 config 目录下历史记录中最新的 JSON SHA256"""
-    excluded_files = {BASE_CONFIG_PATH.name, MODULE_CONFIG_PATH.name}
-    json_files = [f for f in CONFIG_DIR.glob("*.json") if f.name not in excluded_files]
-    if not json_files:
+    """读取最后一次成功构建的 APK SHA256。"""
+    if not LATEST_CONFIG_PATH.is_file():
         return None, None
-    latest_file = max(json_files, key=lambda f: f.stat().st_mtime)
+
     try:
-        with open(latest_file, "r", encoding="utf-8") as f:
-            return latest_file.name, json.load(f).get("sha256")
-    except Exception:
+        latest_config = json.loads(LATEST_CONFIG_PATH.read_text(encoding="utf-8"))
+        config_file = latest_config.get("config_file")
+        sha256_str = latest_config.get("sha256")
+        if not isinstance(config_file, str) or not isinstance(sha256_str, str):
+            return None, None
+
+        config_name = Path(config_file)
+        if config_name.name != config_file or config_name.suffix != ".json":
+            return None, None
+        if not (CONFIG_DIR / config_name).is_file():
+            return None, None
+        return config_file, sha256_str
+    except (OSError, json.JSONDecodeError):
         return None, None
+
+
+def write_latest_config(
+    sha256_str: str, apk_code: str, apk_name: str, release_date: str, config_path: Path
+):
+    """原子写入最后一次成功构建的 APK 状态。"""
+    latest_config = {
+        "version_name": apk_name,
+        "version_code": apk_code,
+        "release_date": release_date,
+        "sha256": sha256_str,
+        "config_file": config_path.name,
+    }
+    temp_path = LATEST_CONFIG_PATH.with_name(f"{LATEST_CONFIG_PATH.name}.tmp")
+    temp_path.write_text(
+        json.dumps(latest_config, ensure_ascii=False, indent=4) + "\n", encoding="utf-8"
+    )
+    temp_path.replace(LATEST_CONFIG_PATH)
 
 def fetch_changelog_info() -> tuple[str, str, list[str]]:
     """正则抓取官网的版本号、更新日期和更新日志"""
@@ -632,6 +659,7 @@ def main():
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
         zip_path = create_module_zip(module_version, apk_name, apk_code)
         write_build_metadata(module_version, version_code, apk_name, apk_code, config_path, zip_path)
+        write_latest_config(sha256_str, apk_code, apk_name, release_date, config_path)
 
         print("\n[✓] 所有步骤全流程顺利执行完毕！")
 
