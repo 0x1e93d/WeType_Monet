@@ -39,14 +39,9 @@
 - `Wetype_<版本名称>(<版本号>).apk`：构建时下载并归档的官方微信输入法原始安装包。
 - `Wetype_Monet_<版本名称>(<版本号>)_vN.apk`：写入 Monet 资源、保持 `com.tencent.wetype` 包名并使用公开发布签名的独立安装包。
 - `wetype_monet.json`：KernelSU/Magisk 在线更新清单，会在每次成功发布后更新。
-- `config/targets/<版本名称>(<版本号>).json`：该微信输入法版本的资源映射结果，仅保存于仓库，不作为 Release 附件。
 
 Release 页面会记录模块版本、适配的微信输入法版本和本次提交摘要。
 
 ## 自动构建
 
 GitHub Actions 每天北京时间 06:00 检查微信输入法更新，也会在核心文件提交到 `main` 时触发。上游 APK 或 `config/base.json` 的有效内容发生变化时，流水线会递增模块版本，并生成对应的 ZIP、官方 APK 归档和 Monet APK。
-
-## 推荐搭配
-
-- [WeType-Swipe](https://github.com/waoui/WeType-Swipe)：LSPosed 模块，为微信输入法的 26 键和九宫格提供可配置的按键下滑快捷操作，例如全选、剪切、复制和粘贴。
