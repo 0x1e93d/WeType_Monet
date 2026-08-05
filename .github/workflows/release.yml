@@ -6,7 +6,9 @@ on:
     paths:
       - ".github/workflows/release.yml"
       - "config/base.json"
-      - "config/module.json"
+      - "config/latest.json"
+      - "config/targets/**"
+      - "wetype_monet.json"
       - "module_template/**"
       - "overlay/**"
       - "scripts/**"
@@ -84,14 +86,9 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Bump module patch version for source changes
-        if: github.event_name == 'push'
-        run: python scripts/version.py bump-patch
-
       - name: Build module
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
-          VERSION_CODE: ${{ github.run_number }}
         run: python scripts/build.py
 
       - name: Read build metadata
@@ -126,47 +123,43 @@ jobs:
           fi >> "$GITHUB_OUTPUT"
           echo "EOF" >> "$GITHUB_OUTPUT"
 
-      - name: Commit generated configuration and version
-        if: steps.metadata.outputs.built == 'true'
-        run: |
-          git add config/*.json
-          if git diff --cached --quiet; then
-            exit 0
-          fi
-          git commit -m "chore(release): update module and target configuration"
-          git push
-
       - name: Upload build artifacts
         if: steps.metadata.outputs.built == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
-          name: wetype-monet-${{ github.run_number }}
-          path: |
-            out/*.zip
-            out/*.json
+          name: wetype-monet-${{ steps.metadata.outputs.release_tag }}
+          path: out/*.zip
 
       - name: Create release
         if: steps.metadata.outputs.built == 'true'
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
-          tag_name: build-${{ github.run_number }}
-          name: 微信输入法 Monet ${{ steps.metadata.outputs.module_version }}
+          tag_name: ${{ steps.metadata.outputs.release_tag }}
+          name: ${{ steps.metadata.outputs.release_title }}
           body: |
             ## 微信输入法 Monet 自动适配
 
             - 模块版本：${{ steps.metadata.outputs.module_version }}
-            - 发布序号：${{ steps.metadata.outputs.version_code }}
+            - 模块版本代码：${{ steps.metadata.outputs.version_code }}
             - 适配版本：微信输入法 ${{ steps.metadata.outputs.apk_name }} (${{ steps.metadata.outputs.apk_code }})
             - 构建时间：${{ steps.metadata.outputs.build_time }}
 
             ### 本次变更
-            ${{ steps.changes.outputs.summary || '- 自动检测到上游 APK 更新，模块展示版本保持不变。' }}
+            ${{ steps.changes.outputs.summary || '- 自动检测到上游 APK 或基础资源配置更新。' }}
 
             ### 产物
             - `${{ steps.metadata.outputs.zip_file }}`：Magisk/KernelSU Overlay 模块
-            - `${{ steps.metadata.outputs.config_file }}`：当前版本资源映射配置
-          files: |
-            out/*.zip
-            out/*.json
+            - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
+          files: out/*.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Commit generated release state
+        if: steps.metadata.outputs.built == 'true'
+        run: |
+          git add config/latest.json config/targets/ wetype_monet.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "发布：更新模块状态与资源映射"
+          git push
