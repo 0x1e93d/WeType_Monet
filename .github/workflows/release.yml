@@ -113,6 +113,18 @@ jobs:
           metadata = json.loads(Path("out/internal/build-metadata.json").read_text(encoding="utf-8"))
           for key, value in metadata.items():
               print(f"{key}={value}")
+
+          target_config = json.loads(
+              (Path("config") / metadata["config_file"]).read_text(encoding="utf-8")
+          )
+          changelog = [
+              str(item).replace("\r", " ").replace("\n", " ").strip()
+              for item in target_config.get("changelog", [])
+              if str(item).strip()
+          ]
+          print("official_changelog<<EOF")
+          print("\n".join(f"- {item}" for item in changelog) or "- 暂无可展示的官方更新日志。")
+          print("EOF")
           PY
 
       - name: Collect submitted changes
@@ -147,21 +159,25 @@ jobs:
           tag_name: ${{ steps.metadata.outputs.release_tag }}
           name: ${{ steps.metadata.outputs.release_title }}
           body: |
-            ## 微信输入法 Monet 自动适配
+            ## 微信输入法 Monet
 
-            - 模块版本：${{ steps.metadata.outputs.module_version }}
-            - 模块版本代码：${{ steps.metadata.outputs.version_code }}
-            - 适配版本：微信输入法 ${{ steps.metadata.outputs.apk_name }} (${{ steps.metadata.outputs.apk_code }})
+            已适配微信输入法 ${{ steps.metadata.outputs.apk_name }} (${{ steps.metadata.outputs.apk_code }})。
+
+            ### 微信输入法官方更新日志
+            ${{ steps.metadata.outputs.official_changelog }}
+
+            ### 下载
+            - `${{ steps.metadata.outputs.zip_file }}`：用于 Magisk/KernelSU 的 Monet Overlay 模块。
+            - `${{ steps.metadata.outputs.monet_apk_file }}`：保持官方包名、写入 Monet 资源的独立安装包。
+            - `${{ steps.metadata.outputs.official_apk_file }}`：本次构建下载的官方微信输入法原始 APK。
+
+            ### 构建信息
+            - 模块版本：${{ steps.metadata.outputs.module_version }}（版本代码：${{ steps.metadata.outputs.version_code }}）
             - 构建时间：${{ steps.metadata.outputs.build_time }}
+            - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
 
             ### 本次变更
             ${{ steps.changes.outputs.summary || '- 自动检测到上游 APK 或基础资源配置更新。' }}
-
-            ### 产物
-            - `${{ steps.metadata.outputs.zip_file }}`：Magisk/KernelSU Overlay 模块
-            - `${{ steps.metadata.outputs.official_apk_file }}`：官方微信输入法原始安装包备份
-            - `${{ steps.metadata.outputs.monet_apk_file }}`：保持原包名的 Monet 微信输入法
-            - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
           files: |
             out/${{ steps.metadata.outputs.zip_file }}
             out/${{ steps.metadata.outputs.official_apk_file }}
