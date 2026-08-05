@@ -224,13 +224,13 @@ class BuildMappingTests(unittest.TestCase):
         zip_path.write_bytes(b"module-zip")
 
         archive_path = build.archive_official_apk("3.5.2", "55201")
-        monet_path = build.OUT_DIR / "微信输入法_Monet_3.5.2(55201)_v2.apk"
+        monet_path = build.OUT_DIR / "Wetype_Monet_3.5.2(55201)_v2.apk"
         monet_path.write_bytes(b"monet-apk")
         build.write_build_metadata(
             "v2", "2", "3.5.2", "55201", config_path, zip_path, archive_path, monet_path
         )
 
-        self.assertEqual(archive_path.name, "微信输入法_3.5.2(55201).apk")
+        self.assertEqual(archive_path.name, "Wetype_3.5.2(55201).apk")
         self.assertEqual(archive_path.read_bytes(), b"official-apk")
         metadata = json.loads(build.BUILD_METADATA_PATH.read_text(encoding="utf-8"))
         self.assertEqual(metadata["official_apk_file"], archive_path.name)

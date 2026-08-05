@@ -61,13 +61,13 @@ def get_module_zip_filename(module_version: int) -> str:
 def get_official_apk_filename(apk_name: str, apk_code: str) -> str:
     safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
-    return f"微信输入法_{safe_name}({safe_code}).apk"
+    return f"Wetype_{safe_name}({safe_code}).apk"
 
 
 def get_monet_apk_filename(apk_name: str, apk_code: str, module_version: int) -> str:
     safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
-    return f"微信输入法_Monet_{safe_name}({safe_code})_{format_module_version(module_version)}.apk"
+    return f"Wetype_Monet_{safe_name}({safe_code})_{format_module_version(module_version)}.apk"
 
 
 def get_release_title(apk_name: str, module_version: int) -> str:
