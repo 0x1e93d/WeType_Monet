@@ -2,13 +2,11 @@
 
 - **Version:** `v2`
 - **VersionCode:** `2`
-- **WeType:** `3.5.2 (55201)`
+- **WeType:** `3.5.3 (55201)`
 - **Official release date:** `2026-07-22`
-- **Build time:** `2026-08-06 08:33 UTC+08:00`
-- **SHA256:** `71397a9fcb21123b229e68d7481d5a81240cf9b142b548c082ffcc07aa5ad621`
+- **Build time:** `2026-08-06 08:36 UTC+08:00`
+- **SHA256:** `d18b29e7c938a12a525d7a001f7f1897e282c248dc02766e23d3e38e04029c82`
 
 ## Official Changelog
 
-- 跨设备功能支持自定义设备名称
-- 长按候选词，可将其固定至首位或删除
-- 体验优化与问题修复
+- No matching official changelog is available.
