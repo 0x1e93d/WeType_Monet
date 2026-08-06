@@ -185,6 +185,31 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Notify MWGA of Monet release
+        if: steps.metadata.outputs.built == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.MWGA_MONET_PUBLISH_TOKEN }}
+          MWGA_REPOSITORY: 0x1e93d/MWGA
+          MONET_RELEASE_TAG: ${{ steps.metadata.outputs.release_tag }}
+          MONET_VERSION: ${{ steps.metadata.outputs.module_version }}
+          WETYPE_VERSION: ${{ steps.metadata.outputs.apk_name }}
+          WETYPE_VERSION_CODE: ${{ steps.metadata.outputs.apk_code }}
+          ORIGINAL_APK_FILE: ${{ steps.metadata.outputs.official_apk_file }}
+          MONET_APK_FILE: ${{ steps.metadata.outputs.monet_apk_file }}
+        run: |
+          set -euo pipefail
+          printf '%s' \
+            '{"event_type":"monet-published","client_payload":{' \
+            '"monet_release_tag":"'"$MONET_RELEASE_TAG"'",' \
+            '"monet_version":"'"$MONET_VERSION"'",' \
+            '"wetype_version":"'"$WETYPE_VERSION"'",' \
+            '"wetype_version_code":"'"$WETYPE_VERSION_CODE"'",' \
+            '"original_apk_file":"'"$ORIGINAL_APK_FILE"'",' \
+            '"monet_apk_file":"'"$MONET_APK_FILE"'"' \
+            '}}' \
+            | gh api --method POST "repos/$MWGA_REPOSITORY/dispatches" --input -
+
       - name: Commit generated release state
         if: steps.metadata.outputs.built == 'true'
         run: |
