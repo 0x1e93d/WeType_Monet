@@ -32,6 +32,7 @@ BASE_CONFIG_PATH = CONFIG_DIR / "base.json"
 TARGET_CONFIG_DIR = CONFIG_DIR / "targets"
 LATEST_CONFIG_PATH = CONFIG_DIR / "latest.json"
 UPDATE_JSON_PATH = PROJECT_ROOT / "wetype_monet.json"
+KSU_CHANGELOG_PATH = PROJECT_ROOT / "CHANGELOG.md"
 DOWNLOAD_APK_PATH = OUT_DIR / "wetype_latest.apk"
 PUBLIC_SIGNING_BKS_PATH = PROJECT_ROOT / "signing" / "LSPatch.bks"
 PUBLIC_SIGNING_PASSWORD = "114514"
@@ -47,6 +48,7 @@ MODULE_AUTHOR = "酷安@1e93d"
 MODULE_DESCRIPTION = "为微信输入法提供 Monet 动态色彩主题。"
 REPOSITORY_SLUG = os.environ.get("GITHUB_REPOSITORY", "0x1e93d/WeType_Monet")
 UPDATE_JSON_URL = f"https://raw.githubusercontent.com/{REPOSITORY_SLUG}/main/wetype_monet.json"
+KSU_CHANGELOG_URL = f"https://raw.githubusercontent.com/{REPOSITORY_SLUG}/main/{KSU_CHANGELOG_PATH.name}"
 
 
 def format_module_version(module_version: int) -> str:
@@ -302,14 +304,51 @@ def write_latest_config(
     )
     temp_path.replace(LATEST_CONFIG_PATH)
 
+def write_update_changelog(
+    module_version: int,
+    apk_name: str,
+    apk_code: str,
+    release_date: str,
+    apk_sha256: str,
+    changelog: list[str],
+):
+    """Write the Markdown changelog consumed by KernelSU's update UI."""
+    version = format_module_version(module_version)
+    entries = [
+        re.sub(r"\s+", " ", str(entry)).strip()
+        for entry in changelog
+        if str(entry).strip()
+    ]
+    lines = [
+        "# WeType Monet",
+        "",
+        f"- **Version:** `{version}`",
+        f"- **VersionCode:** `{module_version}`",
+        f"- **WeType:** `{apk_name} ({apk_code})`",
+        f"- **Official release date:** `{release_date or 'Unknown'}`",
+        f"- **Build time:** `{current_build_time()}`",
+        f"- **SHA256:** `{apk_sha256}`",
+        "",
+        "## Official Changelog",
+        "",
+    ]
+    lines.extend(f"- {entry}" for entry in entries)
+    if not entries:
+        lines.append("- No matching official changelog is available.")
+
+    temp_path = KSU_CHANGELOG_PATH.with_name(f"{KSU_CHANGELOG_PATH.name}.tmp")
+    temp_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    temp_path.replace(KSU_CHANGELOG_PATH)
+
+
 def write_update_json(module_version: int):
-    """原子写入 KernelSU/Magisk 在线更新清单。"""
+    """Atomically write the KernelSU/Magisk online update manifest."""
     version = format_module_version(module_version)
     payload = {
         "versionCode": module_version,
         "version": version,
         "zipUrl": f"https://github.com/{REPOSITORY_SLUG}/releases/download/{version}/{get_module_zip_filename(module_version)}",
-        "changelog": f"https://github.com/{REPOSITORY_SLUG}/releases/tag/{version}",
+        "changelog": KSU_CHANGELOG_URL,
     }
     temp_path = UPDATE_JSON_PATH.with_name(f"{UPDATE_JSON_PATH.name}.tmp")
     temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
@@ -1053,6 +1092,14 @@ def main():
             apk_name,
             release_date,
             config_path,
+        )
+        write_update_changelog(
+            next_module_version,
+            apk_name,
+            apk_code,
+            release_date,
+            sha256_str,
+            changelog,
         )
         write_update_json(next_module_version)
 

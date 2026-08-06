@@ -25,6 +25,7 @@ class BuildMappingTests(unittest.TestCase):
             "BUILD_TMP_DIR": build.BUILD_TMP_DIR,
             "BUILD_METADATA_PATH": build.BUILD_METADATA_PATH,
             "UPDATE_JSON_PATH": build.UPDATE_JSON_PATH,
+            "KSU_CHANGELOG_PATH": build.KSU_CHANGELOG_PATH,
             "OVERLAY_DIR": build.OVERLAY_DIR,
             "DECOMPILE_DIR": build.DECOMPILE_DIR,
             "BASE_CONFIG_PATH": build.BASE_CONFIG_PATH,
@@ -38,6 +39,7 @@ class BuildMappingTests(unittest.TestCase):
         build.BUILD_TMP_DIR = build.OUT_DIR / "build_tmp"
         build.BUILD_METADATA_PATH = build.OUT_DIR / "internal" / "build-metadata.json"
         build.UPDATE_JSON_PATH = self.root / "wetype_monet.json"
+        build.KSU_CHANGELOG_PATH = self.root / "CHANGELOG.md"
         build.OVERLAY_DIR = self.root / "overlay"
         build.DECOMPILE_DIR = build.OUT_DIR / "decompiled_apk"
         build.BASE_CONFIG_PATH = build.CONFIG_DIR / "base.json"
@@ -335,16 +337,31 @@ class BuildMappingTests(unittest.TestCase):
         self.assertIn("#445566", night)
         self.assertIn("xmlns:android", drawable)
 
-    def test_write_update_json_uses_release_zip_url(self):
+    def test_writes_kernelsu_changelog_and_update_manifest(self):
+        build.write_update_changelog(
+            2,
+            "3.5.2",
+            "55201",
+            "2026-07-22",
+            "a" * 64,
+            ["跨设备功能支持自定义设备名称", "体验优化与问题修复"],
+        )
         build.write_update_json(2)
 
+        changelog = build.KSU_CHANGELOG_PATH.read_text(encoding="utf-8")
+        self.assertIn("# WeType Monet", changelog)
+        self.assertIn(f"**Version:** `v2`", changelog)
+        self.assertIn(f"**WeType:** `3.5.2 (55201)`", changelog)
+        self.assertIn("跨设备功能支持自定义设备名称", changelog)
+        self.assertIn("体验优化与问题修复", changelog)
+        self.assertIn("a" * 64, changelog)
         self.assertEqual(
             json.loads(build.UPDATE_JSON_PATH.read_text(encoding="utf-8")),
             {
                 "versionCode": 2,
                 "version": "v2",
                 "zipUrl": "https://github.com/0x1e93d/WeType_Monet/releases/download/v2/Wetype_Monet_v2.zip",
-                "changelog": "https://github.com/0x1e93d/WeType_Monet/releases/tag/v2",
+                "changelog": "https://raw.githubusercontent.com/0x1e93d/WeType_Monet/main/CHANGELOG.md",
             },
         )
 

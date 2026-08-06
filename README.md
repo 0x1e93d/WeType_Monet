@@ -39,6 +39,7 @@
 - `Wetype_<版本名称>(<版本号>).apk`：构建时下载并归档的官方微信输入法原始安装包。
 - `Wetype_Monet_<版本名称>(<版本号>)_vN.apk`：写入 Monet 资源、保持 `com.tencent.wetype` 包名并使用公开发布签名的独立安装包。
 - `wetype_monet.json`：KernelSU/Magisk 在线更新清单，会在每次成功发布后更新。
+- `CHANGELOG.md`：KernelSU 在线更新界面展示的独立 Markdown 更新日志。
 
 Release 页面会记录模块版本、适配的微信输入法版本和本次提交摘要。
 
