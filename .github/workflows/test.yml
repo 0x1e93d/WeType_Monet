@@ -1,0 +1,93 @@
+name: Test WeType Monet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/**"
+      - "config/**"
+      - "module_template/**"
+      - "overlay/**"
+      - "scripts/**"
+      - "tests/**"
+      - "wetype_monet.json"
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+      - "config/**"
+      - "module_template/**"
+      - "overlay/**"
+      - "scripts/**"
+      - "tests/**"
+      - "wetype_monet.json"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - name: Run Python tests
+        run: python -m unittest discover -s tests -v
+      - name: Check build script syntax
+        run: python -B -c "from pathlib import Path; compile(Path('scripts/build.py').read_text(encoding='utf-8'), 'scripts/build.py', 'exec')"
+      - name: Check shell script syntax
+        shell: bash
+        run: |
+          for file in module_template/*.sh; do
+            sh -n "$file"
+          done
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zipalign apksigner
+          APKTOOL_VER="2.9.3"
+          APKTOOL_COMMIT="3bb7888eb47103a1ba13c86b8a90a4d9614c9e7c"
+          APKTOOL_SCRIPT_SHA256="2e18434d91810bef9cd562bb486246eaec08ac368f0d810214a57b6c3a967ae7"
+          APKTOOL_JAR_SHA256="7956eb04194300ce0d0a84ad18771eebc94b89fb8d1ddcce8ea4c056818646f4"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "https://raw.githubusercontent.com/iBotPeaches/Apktool/${APKTOOL_COMMIT}/scripts/linux/apktool" \
+            --output /tmp/apktool
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VER}/apktool_${APKTOOL_VER}.jar" \
+            --output /tmp/apktool.jar
+          echo "${APKTOOL_SCRIPT_SHA256}  /tmp/apktool" | sha256sum --check --status
+          echo "${APKTOOL_JAR_SHA256}  /tmp/apktool.jar" | sha256sum --check --status
+          sudo install -m 0755 /tmp/apktool /usr/local/bin/apktool
+          sudo install -m 0644 /tmp/apktool.jar /usr/local/bin/apktool.jar
+          BCPROV_VER="1.78.1"
+          BCPROV_SHA256="add5915e6acfc6ab5836e1fd8a5e21c6488536a8c1f21f386eeb3bf280b702d7"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/${BCPROV_VER}/bcprov-jdk18on-${BCPROV_VER}.jar" \
+            --output /tmp/bcprov.jar
+          echo "${BCPROV_SHA256}  /tmp/bcprov.jar" | sha256sum --check --status
+          echo "BCPROV_JAR_PATH=/tmp/bcprov.jar" >> "$GITHUB_ENV"
+      - name: Build test artifacts
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          FORCE_BUILD: "true"
+        run: python scripts/build.py
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: wetype-monet-test-${{ github.run_id }}
+          if-no-files-found: error
+          retention-days: 1
+          path: |
+            out/**/*.apk
+            out/*.zip
+            out/internal/build-metadata.json

@@ -1,0 +1,21 @@
+name: Manual force update
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Confirm that a new module version should be generated"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    if: inputs.confirm == true
+    uses: ./.github/workflows/auto-update.yml
+    with:
+      force_build: true
+    secrets: inherit
