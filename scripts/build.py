@@ -157,32 +157,6 @@ def find_sdk_tools() -> tuple[str, str, str, str]:
     )
     return aapt2, zipalign, apksigner, android_jar
 
-def ensure_debug_keystore() -> Path:
-    """确保 ~/.android/debug.keystore 存在，不存在则自动生成"""
-    keystore = Path.home() / ".android" / "debug.keystore"
-    if keystore.exists():
-        return keystore
-
-    keystore.parent.mkdir(parents=True, exist_ok=True)
-    keytool_bin = shutil.which("keytool")
-    if not keytool_bin and os.environ.get("JAVA_HOME"):
-        cand = Path(os.environ["JAVA_HOME"]) / "bin" / "keytool"
-        if cand.exists():
-            keytool_bin = str(cand)
-
-    if not keytool_bin:
-        raise RuntimeError("[!] 系统环境中缺少 keytool，无法自动生成签名证书。")
-
-    cmd = [
-        keytool_bin, "-genkeypair", "-v",
-        "-keystore", str(keystore),
-        "-storepass", "android", "-alias", "androiddebugkey", "-keypass", "android",
-        "-keyalg", "RSA", "-keysize", "2048", "-validity", "10000",
-        "-dname", "CN=Android Debug,O=Android,C=US"
-    ]
-    subprocess.run(cmd, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-    return keystore
-
 def calculate_sha256(file_path: Path) -> str:
     """计算指定文件的 SHA256"""
     sha256 = hashlib.sha256()
@@ -255,8 +229,16 @@ def get_latest_sha256() -> tuple[str | None, str | None]:
     return upstream["config_file"], upstream["sha256"]
 
 
-def should_build(apk_sha256: str, base_sha256: str, latest_state: dict | None) -> bool:
-    """仅在上游 APK 或基础资源配置有效内容变化时请求构建。"""
+def should_build(
+    apk_sha256: str,
+    base_sha256: str,
+    latest_state: dict | None,
+    *,
+    force_build: bool = False,
+) -> bool:
+    """在输入变化或显式强制时请求构建。"""
+    if force_build:
+        return True
     if latest_state is None:
         return True
     upstream = latest_state["upstream"]
@@ -266,9 +248,35 @@ def should_build(apk_sha256: str, base_sha256: str, latest_state: dict | None) -
     )
 
 
-def get_next_module_version(latest_state: dict | None) -> int:
-    """计算本次成功发布应使用的模块版本。"""
-    return (latest_state or {"module_version": 0})["module_version"] + 1
+def get_existing_module_versions() -> set[int]:
+    """读取仓库中已经占用的 vN 标签，避免重复创建 Release。"""
+    try:
+        result = subprocess.run(
+            ["git", "tag", "--list", "v[0-9]*"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+    except OSError:
+        return set()
+    versions: set[int] = set()
+    for tag in result.stdout.splitlines():
+        match = re.fullmatch(r"v([1-9][0-9]*)", tag.strip())
+        if match:
+            versions.add(int(match.group(1)))
+    return versions
+
+
+def get_next_module_version(
+    latest_state: dict | None,
+    reserved_versions: set[int] | None = None,
+) -> int:
+    """计算本次成功发布应使用的模块版本，并跳过已存在的版本标签。"""
+    next_version = (latest_state or {"module_version": 0})["module_version"] + 1
+    reserved_versions = reserved_versions or set()
+    while next_version in reserved_versions:
+        next_version += 1
+    return next_version
 
 
 def write_latest_config(
@@ -494,7 +502,9 @@ def fetch_changelog_info() -> tuple[str, str, list[str]]:
         print(f"[!] 抓取官网日志失败: {error}")
         return "", "", []
 
-def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]] | None:
+def download_and_decompile_apk(
+    *, force_build: bool = False
+) -> tuple[str, str, str, str, list[str]] | None:
     """下载并解包 APK"""
     web_version, release_date, changelog = fetch_changelog_info()
 
@@ -508,7 +518,7 @@ def download_and_decompile_apk() -> tuple[str, str, str, str, list[str]] | None:
 
     base_sha256 = get_base_sha256()
     latest_state = get_latest_build_state()
-    if not should_build(new_sha256, base_sha256, latest_state):
+    if not should_build(new_sha256, base_sha256, latest_state, force_build=force_build):
         print("[=] 上游 APK 与 base.json 有效内容均未变化，无需构建。")
         return None
 
@@ -850,6 +860,40 @@ def prepare_public_signing_keystore() -> Path:
     return keystore_path
 
 
+def get_apksigner_sign_command(
+    apksigner: str | Path,
+    keystore: Path,
+    output_apk: Path,
+    input_apk: Path,
+) -> list[str]:
+    """Build the shared release-signing command for generated APKs."""
+    return [
+        str(apksigner),
+        "sign",
+        "--ks",
+        str(keystore),
+        "--ks-type",
+        "PKCS12",
+        "--ks-pass",
+        f"pass:{PUBLIC_SIGNING_PASSWORD}",
+        "--key-pass",
+        f"pass:{PUBLIC_SIGNING_PASSWORD}",
+        "--ks-key-alias",
+        PUBLIC_SIGNING_ALIAS,
+        "--v1-signing-enabled",
+        "true",
+        "--v2-signing-enabled",
+        "true",
+        "--v3-signing-enabled",
+        "true",
+        "--v4-signing-enabled",
+        "false",
+        "--out",
+        str(output_apk),
+        str(input_apk),
+    ]
+
+
 def ensure_original_package_name():
     manifest_path = DECOMPILE_DIR / "AndroidManifest.xml"
     manifest = manifest_path.read_text(encoding="utf-8", errors="ignore")
@@ -860,7 +904,13 @@ def ensure_original_package_name():
         raise RuntimeError(f"[!] 原始包名异常: {package_match.group(1)}")
 
 
-def build_monet_apk(config_file: Path, apk_name: str, apk_code: str, module_version: int) -> Path:
+def build_monet_apk(
+    config_file: Path,
+    apk_name: str,
+    apk_code: str,
+    module_version: int,
+    signing_keystore: Path,
+) -> Path:
     """重建、发布签名并校验保持原包名的 Monet 微信输入法 APK。"""
     _, zipalign, apksigner, _ = find_sdk_tools()
     ensure_original_package_name()
@@ -876,18 +926,17 @@ def build_monet_apk(config_file: Path, apk_name: str, apk_code: str, module_vers
     if build_result.returncode != 0:
         raise RuntimeError(f"Apktool 重建 Monet APK 失败:\n{build_result.stderr or build_result.stdout}")
     subprocess.run([str(zipalign), "-p", "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
-    keystore_path = prepare_public_signing_keystore()
-    sign_command = [str(apksigner), "sign", "--ks", str(keystore_path), "--ks-type", "PKCS12", "--ks-pass", f"pass:{PUBLIC_SIGNING_PASSWORD}", "--key-pass", f"pass:{PUBLIC_SIGNING_PASSWORD}", "--ks-key-alias", PUBLIC_SIGNING_ALIAS, "--v1-signing-enabled", "true", "--v2-signing-enabled", "true", "--v3-signing-enabled", "true", "--v4-signing-enabled", "false", "--out", str(final_apk), str(aligned_apk)]
+    sign_command = get_apksigner_sign_command(apksigner, signing_keystore, final_apk, aligned_apk)
     subprocess.run(sign_command, check=True)
     subprocess.run([str(apksigner), "verify", "--verbose", "--print-certs", str(final_apk)], check=True)
-    for path in (unsigned_apk, aligned_apk, Path(f"{final_apk}.idsig"), keystore_path):
+    for path in (unsigned_apk, aligned_apk, Path(f"{final_apk}.idsig")):
         if path.exists():
             path.unlink()
     print(f"[+] Monet 微信输入法 APK 生成成功 -> {final_apk}")
     return final_apk
 
 
-def build_overlay_apk():
+def build_overlay_apk(signing_keystore: Path):
     """编译并签名 Overlay APK"""
     aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
 
@@ -930,24 +979,11 @@ def build_overlay_apk():
         aligned_apk.unlink()
     subprocess.run([str(zipalign), "-p", "-f", "4", str(unsigned_apk), str(aligned_apk)], check=True)
 
-    print("[4/4] 使用 Debug Key 进行 V2 签名 (apksigner)...")
-    keystore = ensure_debug_keystore()
+    print("[4/4] 使用 LSPatch 发布签名进行 APK 签名 (apksigner)...")
     if final_apk.exists():
         final_apk.unlink()
 
-    sign_cmd = [
-        str(apksigner), "sign",
-        "--ks", str(keystore),
-        "--ks-pass", "pass:android",
-        "--key-pass", "pass:android",
-        "--ks-key-alias", "androiddebugkey",
-        "--v1-signing-enabled", "false",
-        "--v2-signing-enabled", "true",
-        "--v3-signing-enabled", "false",
-        "--v4-signing-enabled", "false",
-        "--out", str(final_apk),
-        str(aligned_apk)
-    ]
+    sign_cmd = get_apksigner_sign_command(apksigner, signing_keystore, final_apk, aligned_apk)
     subprocess.run(sign_cmd, check=True)
 
     for tmp in [compiled_zip, unsigned_apk, aligned_apk, Path(f"{final_apk}.idsig")]:
@@ -1052,9 +1088,11 @@ def main():
     TARGET_CONFIG_DIR.mkdir(parents=True, exist_ok=True)
     OUT_DIR.mkdir(parents=True, exist_ok=True)
 
+    signing_keystore: Path | None = None
     try:
         print("[+] ===== 阶段 1: 检查更新 & 检索/解包 APK =====")
-        build_input = download_and_decompile_apk()
+        force_build = os.environ.get("FORCE_BUILD", "").strip().lower() in {"1", "true", "yes"}
+        build_input = download_and_decompile_apk(force_build=force_build)
         if build_input is None:
             return
         sha256_str, apk_code, apk_name, release_date, changelog = build_input
@@ -1066,10 +1104,15 @@ def main():
         sync_src_resources(config_path)
         prepare_template()
         previous_state = get_latest_build_state()
-        next_module_version = get_next_module_version(previous_state)
+        next_module_version = get_next_module_version(
+            previous_state, get_existing_module_versions()
+        )
         module_version, version_code = generate_module_prop(next_module_version)
-        build_overlay_apk()
-        monet_apk_path = build_monet_apk(config_path, apk_name, apk_code, next_module_version)
+        signing_keystore = prepare_public_signing_keystore()
+        build_overlay_apk(signing_keystore)
+        monet_apk_path = build_monet_apk(
+            config_path, apk_name, apk_code, next_module_version, signing_keystore
+        )
 
         print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
         zip_path = create_module_zip(next_module_version)
@@ -1108,6 +1151,10 @@ def main():
     except Exception as e:
         print(f"\n[!] 工作流执行异常中断: {e}")
         sys.exit(1)
+    finally:
+        keystore_path = signing_keystore or OUT_DIR / "internal" / "monet-release.p12"
+        if keystore_path.exists():
+            keystore_path.unlink()
 
 if __name__ == "__main__":
     main()

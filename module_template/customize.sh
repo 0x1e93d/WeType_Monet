@@ -109,7 +109,9 @@ installation() {
         echo "- 正在进行模块安装……"
         mkdir -p "$MODPATH/system/priv-app/WetypeMonet"
         cp -rf "$MODPATH/files/WetypeMonet.apk" "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
-        pm install -r "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
+        if ! pm install -r "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"; then
+            echo "- [动态 Overlay 安装失败] 重启生效"
+        fi
         rm -rf "$MODPATH/files"
         am force-stop --user 0 com.tencent.wetype  2>/dev/null
         export MODULE_HOT_INSTALL_REQUEST=true
@@ -135,9 +137,9 @@ tip() {
 
 main() {
     author
+    backup
     check_support
     check_package_type
-    backup
     multi_user_installation
     installation
     tip
