@@ -199,6 +199,24 @@ class BuildMappingTests(unittest.TestCase):
         self.assertTrue(build.should_build("a" * 64, "d" * 64, state))
         self.assertTrue(build.should_build("a" * 64, "b" * 64, None))
 
+    def test_should_build_when_forced_even_without_input_changes(self):
+        state = self._write_latest_state()
+
+        self.assertTrue(build.should_build("a" * 64, "b" * 64, state, force_build=True))
+
+    def test_overlay_signing_command_uses_public_lspatch_keystore(self):
+        command = build.get_apksigner_sign_command(
+            "apksigner",
+            Path("public.p12"),
+            Path("overlay.apk"),
+            Path("aligned.apk"),
+        )
+
+        self.assertIn("--ks-type", command)
+        self.assertEqual(command[command.index("--ks-type") + 1], "PKCS12")
+        self.assertEqual(command[command.index("--ks-key-alias") + 1], build.PUBLIC_SIGNING_ALIAS)
+        self.assertNotIn("androiddebugkey", command)
+
     def test_canonical_json_hash_ignores_formatting(self):
         build.BASE_CONFIG_PATH.write_text('{"b": 2, "a": 1}', encoding="utf-8")
         first_hash = build.get_base_sha256()
@@ -206,6 +224,7 @@ class BuildMappingTests(unittest.TestCase):
 
         self.assertEqual(build.get_base_sha256(), first_hash)
         self.assertEqual(build.get_next_module_version({"module_version": 1}), 2)
+        self.assertEqual(build.get_next_module_version({"module_version": 2}, {3, 4}), 5)
 
     def test_module_metadata_uses_latest_integer_version(self):
         build.BUILD_TMP_DIR.mkdir(parents=True)
@@ -383,6 +402,14 @@ class BuildMappingTests(unittest.TestCase):
         self.assertEqual(configured_names, source_names)
         self.assertEqual(len({item["key"] for item in drawables}), len(drawables))
         self.assertTrue(all(item["description"].strip() for item in drawables))
+
+    def test_customize_restores_old_config_before_reading_package_type(self):
+        script = (Path(__file__).resolve().parents[1] / "module_template" / "customize.sh").read_text(
+            encoding="utf-8"
+        )
+        main_body = script[script.index("main()") :]
+
+        self.assertLess(main_body.index("backup"), main_body.index("check_package_type"))
 
 
 if __name__ == "__main__":
