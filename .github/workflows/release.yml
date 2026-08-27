@@ -1,0 +1,221 @@
+name: Build and Release Wetype Monet
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - ".github/workflows/release.yml"
+      - "config/base.json"
+      - "config/latest.json"
+      - "config/targets/**"
+      - "wetype_monet.json"
+      - "module_template/**"
+      - "overlay/**"
+      - "scripts/**"
+      - "tests/**"
+
+  schedule:
+    - cron: "17 6 * * *"
+      timezone: "Asia/Shanghai"
+
+  workflow_dispatch:
+
+permissions: {}
+
+concurrency:
+  group: wetype-monet-release
+  cancel-in-progress: false
+
+jobs:
+  test:
+    permissions:
+      contents: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - name: Run mapping tests
+        run: python -m unittest discover -s tests -v
+      - name: Check build script syntax
+        run: python -B -c "from pathlib import Path; compile(Path('scripts/build.py').read_text(encoding='utf-8'), 'scripts/build.py', 'exec')"
+
+  build:
+    needs: test
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+
+      - name: Install build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y zipalign apksigner
+          APKTOOL_VER="2.9.3"
+          APKTOOL_COMMIT="3bb7888eb47103a1ba13c86b8a90a4d9614c9e7c"
+          APKTOOL_SCRIPT_SHA256="2e18434d91810bef9cd562bb486246eaec08ac368f0d810214a57b6c3a967ae7"
+          APKTOOL_JAR_SHA256="7956eb04194300ce0d0a84ad18771eebc94b89fb8d1ddcce8ea4c056818646f4"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "https://raw.githubusercontent.com/iBotPeaches/Apktool/${APKTOOL_COMMIT}/scripts/linux/apktool" \
+            --output /tmp/apktool
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VER}/apktool_${APKTOOL_VER}.jar" \
+            --output /tmp/apktool.jar
+          echo "${APKTOOL_SCRIPT_SHA256}  /tmp/apktool" | sha256sum --check --status
+          echo "${APKTOOL_JAR_SHA256}  /tmp/apktool.jar" | sha256sum --check --status
+          sudo install -m 0755 /tmp/apktool /usr/local/bin/apktool
+          sudo install -m 0644 /tmp/apktool.jar /usr/local/bin/apktool.jar
+          BCPROV_VER="1.78.1"
+          BCPROV_SHA256="add5915e6acfc6ab5836e1fd8a5e21c6488536a8c1f21f386eeb3bf280b702d7"
+          curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+            "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/${BCPROV_VER}/bcprov-jdk18on-${BCPROV_VER}.jar" \
+            --output /tmp/bcprov.jar
+          echo "${BCPROV_SHA256}  /tmp/bcprov.jar" | sha256sum --check --status
+          echo "BCPROV_JAR_PATH=/tmp/bcprov.jar" >> "$GITHUB_ENV"
+
+      - name: Configure Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Build module
+        env:
+          ANDROID_HOME: ${{ env.ANDROID_HOME }}
+        run: python scripts/build.py
+
+      - name: Read build metadata
+        id: metadata
+        run: |
+          if [ ! -f out/internal/build-metadata.json ]; then
+            echo "built=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "built=true" >> "$GITHUB_OUTPUT"
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import json
+          from pathlib import Path
+
+          metadata = json.loads(Path("out/internal/build-metadata.json").read_text(encoding="utf-8"))
+          for key, value in metadata.items():
+              print(f"{key}={value}")
+
+          target_config = json.loads(
+              (Path("config") / metadata["config_file"]).read_text(encoding="utf-8")
+          )
+          changelog = [
+              str(item).replace("\r", " ").replace("\n", " ").strip()
+              for item in target_config.get("changelog", [])
+              if str(item).strip()
+          ]
+          print("official_changelog<<EOF")
+          print("\n".join(f"- {item}" for item in changelog) or "- 暂无可展示的官方更新日志。")
+          print("EOF")
+          PY
+
+      - name: Collect submitted changes
+        id: changes
+        if: github.event_name == 'push'
+        env:
+          BEFORE_SHA: ${{ github.event.before }}
+          AFTER_SHA: ${{ github.sha }}
+        run: |
+          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
+          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
+            git log -1 --format='- %s (%h)' "$AFTER_SHA"
+          else
+            git log --format='- %s (%h)' "$BEFORE_SHA..$AFTER_SHA"
+          fi >> "$GITHUB_OUTPUT"
+          echo "EOF" >> "$GITHUB_OUTPUT"
+
+      - name: Upload build artifacts
+        if: steps.metadata.outputs.built == 'true'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: wetype-monet-${{ steps.metadata.outputs.release_tag }}
+          path: |
+            out/${{ steps.metadata.outputs.zip_file }}
+            out/${{ steps.metadata.outputs.official_apk_file }}
+            out/${{ steps.metadata.outputs.monet_apk_file }}
+
+      - name: Create release
+        if: steps.metadata.outputs.built == 'true'
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+        with:
+          tag_name: ${{ steps.metadata.outputs.release_tag }}
+          name: ${{ steps.metadata.outputs.release_title }}
+          body: |
+            ## 微信输入法 Monet
+
+            已适配微信输入法 ${{ steps.metadata.outputs.apk_name }} (${{ steps.metadata.outputs.apk_code }})。
+
+            ### 微信输入法官方更新日志
+            ${{ steps.metadata.outputs.official_changelog }}
+
+            ### 下载
+            - `${{ steps.metadata.outputs.zip_file }}`：用于 Magisk/KernelSU 的 Monet Overlay 模块。
+            - `${{ steps.metadata.outputs.monet_apk_file }}`：保持官方包名、写入 Monet 资源的独立安装包。
+            - `${{ steps.metadata.outputs.official_apk_file }}`：本次构建下载的官方微信输入法原始 APK。
+
+            ### 构建信息
+            - 模块版本：${{ steps.metadata.outputs.module_version }}（版本代码：${{ steps.metadata.outputs.version_code }}）
+            - 构建时间：${{ steps.metadata.outputs.build_time }}
+            - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
+
+            ### 本次变更
+            ${{ steps.changes.outputs.summary || '- 自动检测到上游 APK 或基础资源配置更新。' }}
+          files: |
+            out/${{ steps.metadata.outputs.zip_file }}
+            out/${{ steps.metadata.outputs.official_apk_file }}
+            out/${{ steps.metadata.outputs.monet_apk_file }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Notify MWGA of Monet release
+        if: steps.metadata.outputs.built == 'true'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.MWGA_MONET_PUBLISH_TOKEN }}
+          MWGA_REPOSITORY: 0x1e93d/MWGA
+          MONET_RELEASE_TAG: ${{ steps.metadata.outputs.release_tag }}
+          MONET_VERSION: ${{ steps.metadata.outputs.module_version }}
+          WETYPE_VERSION: ${{ steps.metadata.outputs.apk_name }}
+          WETYPE_VERSION_CODE: ${{ steps.metadata.outputs.apk_code }}
+          ORIGINAL_APK_FILE: ${{ steps.metadata.outputs.official_apk_file }}
+          MONET_APK_FILE: ${{ steps.metadata.outputs.monet_apk_file }}
+        run: |
+          set -euo pipefail
+          printf '%s' \
+            '{"event_type":"monet-published","client_payload":{' \
+            '"monet_release_tag":"'"$MONET_RELEASE_TAG"'",' \
+            '"monet_version":"'"$MONET_VERSION"'",' \
+            '"wetype_version":"'"$WETYPE_VERSION"'",' \
+            '"wetype_version_code":"'"$WETYPE_VERSION_CODE"'",' \
+            '"original_apk_file":"'"$ORIGINAL_APK_FILE"'",' \
+            '"monet_apk_file":"'"$MONET_APK_FILE"'"' \
+            '}}' \
+            | gh api --method POST "repos/$MWGA_REPOSITORY/dispatches" --input -
+
+      - name: Commit generated release state
+        if: steps.metadata.outputs.built == 'true'
+        run: |
+          git add CHANGELOG.md config/latest.json config/targets/ wetype_monet.json
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "发布：更新模块状态与资源映射"
+          git push
