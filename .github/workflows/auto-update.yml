@@ -1,10 +1,10 @@
-name: Build and Release Wetype Monet
+name: Auto check WeType version and release
 
 on:
   push:
     branches: [main]
     paths:
-      - ".github/workflows/release.yml"
+      - ".github/workflows/auto-update.yml"
       - "config/base.json"
       - "config/latest.json"
       - "config/targets/**"
@@ -18,7 +18,13 @@ on:
     - cron: "17 6 * * *"
       timezone: "Asia/Shanghai"
 
-  workflow_dispatch:
+  workflow_call:
+    inputs:
+      force_build:
+        description: "Force a new module version even when upstream inputs are unchanged"
+        required: false
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -96,6 +102,7 @@ jobs:
       - name: Build module
         env:
           ANDROID_HOME: ${{ env.ANDROID_HOME }}
+          FORCE_BUILD: ${{ inputs.force_build || false }}
         run: python scripts/build.py
 
       - name: Read build metadata
@@ -106,13 +113,23 @@ jobs:
             exit 0
           fi
           echo "built=true" >> "$GITHUB_OUTPUT"
-          python - <<'PY' >> "$GITHUB_OUTPUT"
+          python - <<'PY'
           import json
+          import os
+          import uuid
           from pathlib import Path
+
+          output_path = Path(os.environ["GITHUB_OUTPUT"])
+
+          def set_output(key, value):
+              value = str(value)
+              delimiter = f"ghadelimiter_{uuid.uuid4().hex}"
+              with output_path.open("a", encoding="utf-8") as output:
+                  output.write(f"{key}<<{delimiter}\n{value}\n{delimiter}\n")
 
           metadata = json.loads(Path("out/internal/build-metadata.json").read_text(encoding="utf-8"))
           for key, value in metadata.items():
-              print(f"{key}={value}")
+              set_output(key, value)
 
           target_config = json.loads(
               (Path("config") / metadata["config_file"]).read_text(encoding="utf-8")
@@ -122,9 +139,10 @@ jobs:
               for item in target_config.get("changelog", [])
               if str(item).strip()
           ]
-          print("official_changelog<<EOF")
-          print("\n".join(f"- {item}" for item in changelog) or "- 暂无可展示的官方更新日志。")
-          print("EOF")
+          set_output(
+              "official_changelog",
+              "\n".join(f"- {item}" for item in changelog) or "- 暂无可展示的官方更新日志。",
+          )
           PY
 
       - name: Collect submitted changes
@@ -134,13 +152,24 @@ jobs:
           BEFORE_SHA: ${{ github.event.before }}
           AFTER_SHA: ${{ github.sha }}
         run: |
-          echo "summary<<EOF" >> "$GITHUB_OUTPUT"
-          if [ "$BEFORE_SHA" = "0000000000000000000000000000000000000000" ]; then
-            git log -1 --format='- %s (%h)' "$AFTER_SHA"
-          else
-            git log --format='- %s (%h)' "$BEFORE_SHA..$AFTER_SHA"
-          fi >> "$GITHUB_OUTPUT"
-          echo "EOF" >> "$GITHUB_OUTPUT"
+          python - <<'PY'
+          import os
+          import subprocess
+          import uuid
+
+          before = os.environ["BEFORE_SHA"]
+          after = os.environ["AFTER_SHA"]
+          revision = after if before == "0000000000000000000000000000000000000000" else f"{before}..{after}"
+          summary = subprocess.run(
+              ["git", "log", "--format=- %s (%h)", revision],
+              check=True,
+              capture_output=True,
+              text=True,
+          ).stdout.rstrip()
+          delimiter = f"ghadelimiter_{uuid.uuid4().hex}"
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
+              output.write(f"summary<<{delimiter}\n{summary}\n{delimiter}\n")
+          PY
 
       - name: Upload build artifacts
         if: steps.metadata.outputs.built == 'true'
@@ -184,31 +213,6 @@ jobs:
             out/${{ steps.metadata.outputs.monet_apk_file }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Notify MWGA of Monet release
-        if: steps.metadata.outputs.built == 'true'
-        shell: bash
-        env:
-          GH_TOKEN: ${{ secrets.MWGA_MONET_PUBLISH_TOKEN }}
-          MWGA_REPOSITORY: 0x1e93d/MWGA
-          MONET_RELEASE_TAG: ${{ steps.metadata.outputs.release_tag }}
-          MONET_VERSION: ${{ steps.metadata.outputs.module_version }}
-          WETYPE_VERSION: ${{ steps.metadata.outputs.apk_name }}
-          WETYPE_VERSION_CODE: ${{ steps.metadata.outputs.apk_code }}
-          ORIGINAL_APK_FILE: ${{ steps.metadata.outputs.official_apk_file }}
-          MONET_APK_FILE: ${{ steps.metadata.outputs.monet_apk_file }}
-        run: |
-          set -euo pipefail
-          printf '%s' \
-            '{"event_type":"monet-published","client_payload":{' \
-            '"monet_release_tag":"'"$MONET_RELEASE_TAG"'",' \
-            '"monet_version":"'"$MONET_VERSION"'",' \
-            '"wetype_version":"'"$WETYPE_VERSION"'",' \
-            '"wetype_version_code":"'"$WETYPE_VERSION_CODE"'",' \
-            '"original_apk_file":"'"$ORIGINAL_APK_FILE"'",' \
-            '"monet_apk_file":"'"$MONET_APK_FILE"'"' \
-            '}}' \
-            | gh api --method POST "repos/$MWGA_REPOSITORY/dispatches" --input -
 
       - name: Commit generated release state
         if: steps.metadata.outputs.built == 'true'
