@@ -1,16 +1,16 @@
 {
     "state_version": 1,
-    "module_version": 8,
+    "module_version": 9,
     "base_sha256": "7eea36b02f0215a4b8ccfa0c5d1af03b55612573130926aa82545b313348436b",
     "upstream": {
         "version_name": "3.5.4",
         "version_code": "56201",
-        "sha256": "7bd1ff8734ff734ee5651ffa937a7ab740da78972b286461ca949172ecf3a685",
+        "sha256": "3c2a2beb1fc6f0d47e10d8e93f60a2917e93b62e88597aded944274594935cbc",
         "release_date": "2026-08-28",
         "config_file": "targets/3.5.4(56201).json"
     },
     "release": {
-        "tag": "v8",
-        "title": "微信输入法_3.5.4_v8"
+        "tag": "v9",
+        "title": "微信输入法_3.5.4_v9"
     }
 }

@@ -1,11 +1,11 @@
 # WeType Monet
 
-- **Version:** `v8`
-- **VersionCode:** `8`
+- **Version:** `v9`
+- **VersionCode:** `9`
 - **WeType:** `3.5.4 (56201)`
 - **Official release date:** `2026-08-28`
-- **Build time:** `2026-09-05 08:09 UTC+08:00`
-- **SHA256:** `7bd1ff8734ff734ee5651ffa937a7ab740da78972b286461ca949172ecf3a685`
+- **Build time:** `2026-09-09 08:17 UTC+08:00`
+- **SHA256:** `3c2a2beb1fc6f0d47e10d8e93f60a2917e93b62e88597aded944274594935cbc`
 
 ## Official Changelog
 
