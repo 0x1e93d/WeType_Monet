@@ -36,6 +36,8 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
+      - name: Prefer IPv4
+        run: echo 'precedence ::ffff:0:0/96  100' | sudo tee -a /etc/gai.conf
       - name: Run Python tests
         run: python -m unittest discover -s tests -v
       - name: Check build script syntax
@@ -50,7 +52,14 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
-      - uses: android-actions/setup-android@9fc6c4e9069bf8d3d10b2204b1fb8f6ef7065407 # v3
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: ""
+      - name: Install Android SDK components
+        run: |
+          yes | sdkmanager --licenses > /dev/null
+          sdkmanager --install "platform-tools" "build-tools;35.0.0" "platforms;android-35"
       - name: Install build tools
         run: |
           sudo apt-get update
@@ -78,7 +87,6 @@ jobs:
           echo "BCPROV_JAR_PATH=/tmp/bcprov.jar" >> "$GITHUB_ENV"
       - name: Build test artifacts
         env:
-          ANDROID_HOME: ${{ env.ANDROID_HOME }}
           FORCE_BUILD: "true"
         run: python scripts/build.py
       - name: Upload test artifacts
