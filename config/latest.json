@@ -1,16 +1,16 @@
 {
     "state_version": 1,
-    "module_version": 10,
+    "module_version": 11,
     "base_sha256": "7eea36b02f0215a4b8ccfa0c5d1af03b55612573130926aa82545b313348436b",
     "upstream": {
-        "version_name": "3.5.4",
-        "version_code": "56201",
-        "sha256": "b317b0307db91eb1c9ad384c8c23a1b709c1da6c588b36bc1dd20370d0eb7440",
+        "version_name": "4.0.0",
+        "version_code": "57201",
+        "sha256": "26b530d28723783a4c3ac14c288947fc18bd12ac0f69f821427151d4feb49600",
         "release_date": "2026-08-28",
-        "config_file": "targets/3.5.4(56201).json"
+        "config_file": "targets/4.0.0(57201).json"
     },
     "release": {
-        "tag": "v10",
-        "title": "微信输入法_3.5.4_v10"
+        "tag": "v11",
+        "title": "微信输入法_4.0.0_v11"
     }
 }
