@@ -1,11 +1,11 @@
 # WeType Monet
 
-- **Version:** `v13`
-- **VersionCode:** `13`
+- **Version:** `v14`
+- **VersionCode:** `14`
 - **WeType:** `4.0.0 (57206)`
-- **Official release date:** `2026-09-25`
-- **Build time:** `2026-10-11 09:02 UTC+08:00`
-- **SHA256:** `f7f21c78d293c0d144f52f461b9c75b2d631d23f2a37ee1107eb53b35d86df4c`
+- **Official release date:** `2026-10-10`
+- **Build time:** `2026-10-15 08:52 UTC+08:00`
+- **SHA256:** `5ccda82546ec407fa52f67b09b9ed7c3362963926f0f539fcbc70eef3cae3c66`
 
 ## Official Changelog
 
