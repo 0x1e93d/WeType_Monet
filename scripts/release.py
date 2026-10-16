@@ -85,7 +85,7 @@ def get_latest_build_state(paths: BuildPaths) -> dict | None:
             config_relative_path.is_absolute()
             or ".." in config_relative_path.parts
             or not config_relative_path.parts
-            or config_relative_path.parts[0] != paths.target_config_dir.name
+            or config_relative_path.parts[0] != paths.mapping_config_dir.name
             or config_relative_path.suffix != ".json"
         ):
             return None
@@ -166,6 +166,7 @@ def write_latest_config(
     latest_config = {
         "state_version": 1,
         "module_version": module_version,
+        # 沿用发布状态中的字段名，记录本次主题配置摘要。
         "base_sha256": base_sha256,
         "upstream": {
             "version_name": apk_name,

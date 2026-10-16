@@ -37,12 +37,12 @@ class BuildPaths:
         return self.out_dir / "internal" / "build-metadata.json"
 
     @property
-    def base_config_path(self) -> Path:
-        return self.config_dir / "base.json"
+    def theme_config_path(self) -> Path:
+        return self.config_dir / "theme.json"
 
     @property
-    def target_config_dir(self) -> Path:
-        return self.config_dir / "targets"
+    def mapping_config_dir(self) -> Path:
+        return self.config_dir / "mappings"
 
     @property
     def latest_config_path(self) -> Path:

@@ -144,12 +144,12 @@ jobs:
           for key, value in metadata.items():
               set_output(key, value)
 
-          target_config = json.loads(
+          version_mapping = json.loads(
               (Path("config") / metadata["config_file"]).read_text(encoding="utf-8")
           )
           changelog = [
               str(item).replace("\r", " ").replace("\n", " ").strip()
-              for item in target_config.get("changelog", [])
+              for item in version_mapping.get("changelog", [])
               if str(item).strip()
           ]
           set_output(
@@ -202,7 +202,7 @@ jobs:
       - name: Commit generated release state
         if: steps.metadata.outputs.built == 'true'
         run: |
-          git add CHANGELOG.md config/latest.json config/targets/ wetype_monet.json
+          git add CHANGELOG.md config/latest.json config/mappings/ wetype_monet.json
           if git diff --cached --quiet; then
             exit 0
           fi

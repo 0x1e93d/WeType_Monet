@@ -20,7 +20,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 class BuildPipelineTests(BuildTestCase):
     def setUp(self):
         super().setUp()
-        self._write_base_config()
+        self._write_theme_config()
         self.apk_content = b"official-apk"
         self.apk_sha256 = hashlib.sha256(self.apk_content).hexdigest()
         state = self._write_latest_state()
@@ -117,7 +117,7 @@ class BuildPipelineTests(BuildTestCase):
 
         metadata = json.loads(self.paths.build_metadata_path.read_text(encoding="utf-8"))
         self.assertEqual(metadata["module_version"], "v3")
-        self.assertEqual(metadata["config_file"], "targets/1.0(1).json")
+        self.assertEqual(metadata["config_file"], "mappings/1.0(1).json")
         self.assertEqual(metadata["zip_file"], "Wetype_Monet_v3.zip")
         self.assertEqual(metadata["official_apk_file"], "Wetype_1.0(1).apk")
         self.assertEqual(metadata["monet_apk_file"], "Wetype_Monet_1.0(1)_v3.apk")

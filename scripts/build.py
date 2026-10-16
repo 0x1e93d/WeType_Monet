@@ -20,7 +20,7 @@ def main(paths: BuildPaths | None = None):
     print("======================================================\n")
 
     paths.config_dir.mkdir(parents=True, exist_ok=True)
-    paths.target_config_dir.mkdir(parents=True, exist_ok=True)
+    paths.mapping_config_dir.mkdir(parents=True, exist_ok=True)
     paths.out_dir.mkdir(parents=True, exist_ok=True)
 
     signing_keystore: Path | None = None
@@ -32,7 +32,7 @@ def main(paths: BuildPaths | None = None):
             return
         sha256_str, apk_code, apk_name, release_date, changelog = build_input
 
-        print("\n[+] ===== 阶段 2: 解析 ID 映射 & 生成配置 =====")
+        print("\n[+] ===== 阶段 2: 解析 ID & 生成版本映射 =====")
         config_path = resources.generate_version_config(paths, sha256_str, apk_code, apk_name, release_date, changelog)
 
         print("\n[+] ===== 阶段 3: 生成 Overlay 资源并编译签名 APK =====")
@@ -67,7 +67,7 @@ def main(paths: BuildPaths | None = None):
         release.write_latest_config(
             paths,
             next_module_version,
-            resources.get_base_sha256(paths),
+            resources.get_theme_sha256(paths),
             sha256_str,
             apk_code,
             apk_name,

@@ -9,10 +9,10 @@ class ReleaseTests(BuildTestCase):
     def test_latest_hash_uses_explicit_state_file(self):
         self._write_latest_state(apk_name="2.0", apk_code="2", apk_sha="e")
 
-        self.assertEqual(release.get_latest_sha256(self.paths), ("targets/2.0(2).json", "e" * 64))
+        self.assertEqual(release.get_latest_sha256(self.paths), ("mappings/2.0(2).json", "e" * 64))
 
     def test_write_latest_config_records_successful_build(self):
-        config_path = self.paths.target_config_dir / "1.0(1).json"
+        config_path = self.paths.mapping_config_dir / "1.0(1).json"
         config_path.write_text("{}", encoding="utf-8")
 
         release.write_latest_config(self.paths, 2, "b" * 64, "a" * 64, "1", "1.0", "2026-01-01", config_path)
@@ -28,7 +28,7 @@ class ReleaseTests(BuildTestCase):
                     "version_code": "1",
                     "sha256": "a" * 64,
                     "release_date": "2026-01-01",
-                    "config_file": "targets/1.0(1).json",
+                    "config_file": "mappings/1.0(1).json",
                 },
                 "release": {
                     "tag": "v2",
@@ -36,7 +36,7 @@ class ReleaseTests(BuildTestCase):
                 },
             },
         )
-        self.assertEqual(release.get_latest_sha256(self.paths), ("targets/1.0(1).json", "a" * 64))
+        self.assertEqual(release.get_latest_sha256(self.paths), ("mappings/1.0(1).json", "a" * 64))
 
     def test_should_skip_unchanged_apk(self):
         state = self._write_latest_state()

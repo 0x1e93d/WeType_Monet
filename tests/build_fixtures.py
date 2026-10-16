@@ -13,7 +13,7 @@ class BuildTestCase(unittest.TestCase):
         self.addCleanup(temp_dir.cleanup)
         self.root = Path(temp_dir.name)
         self.paths = BuildPaths(self.root)
-        self.paths.target_config_dir.mkdir(parents=True)
+        self.paths.mapping_config_dir.mkdir(parents=True)
         self.paths.out_dir.mkdir(parents=True)
         self._write_fixture_apk()
 
@@ -61,24 +61,27 @@ class BuildTestCase(unittest.TestCase):
         drawable_dir.mkdir(parents=True)
         (drawable_dir / "c.xml").write_text('<vector />', encoding="utf-8")
 
-    def _write_base_config(self, drawables=None):
+    def _write_theme_config(self, drawables=None):
         payload = {
-            "theme_colors": [
-                {"key": "color_key", "light": "#123456", "night": "#654321", "description": "color"},
-                {"key": "missing_color", "light": "#000000"},
-            ],
-            "theme_strings": [
-                {"key": "string_key", "value": "A & B", "description": "string"},
-                {"key": "missing_string", "value": "ignored"},
-            ],
-            "theme_drawables": drawables
+            "schema_version": 1,
+            "target_package": "com.tencent.wetype",
+            "colors": {
+                "color_key": {"default": "#123456", "night": "#654321", "description": "颜色"},
+                "missing_color": {"default": "#000000"},
+            },
+            "strings": {
+                "string_key": {"value": "A & B", "description": "字符串"},
+                "missing_string": {"value": "ignored"},
+            },
+            "drawables": drawables
             if drawables is not None
-            else [{"key": "drawable_key", "file_path": "overlay/assets/drawable/source.xml", "description": "drawable"}],
+            else {"drawable_key": {"source": "overlay/assets/drawable/source.xml", "description": "图标"}},
         }
-        self.paths.base_config_path.write_text(json.dumps(payload), encoding="utf-8")
+        self.paths.theme_config_path.write_text(json.dumps(payload), encoding="utf-8")
+        return payload
 
     def _write_latest_state(self, apk_name="1.0", apk_code="1", apk_sha="a", base_sha="b"):
-        config_path = self.paths.target_config_dir / f"{apk_name}({apk_code}).json"
+        config_path = self.paths.mapping_config_dir / f"{apk_name}({apk_code}).json"
         config_path.write_text("{}", encoding="utf-8")
         state = {
             "state_version": 1,

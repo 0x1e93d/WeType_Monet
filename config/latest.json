@@ -7,7 +7,7 @@
         "version_code": "57206",
         "sha256": "03bb0238eb2e147d6526b9d72df917bcec9bb7edc9423ae16d4aadb85fc1fca7",
         "release_date": "2026-10-10",
-        "config_file": "targets/4.0.0(57206).json"
+        "config_file": "mappings/4.0.0(57206).json"
     },
     "release": {
         "tag": "v15",

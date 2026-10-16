@@ -127,8 +127,8 @@ KernelSU 动态包还支持以下功能：
 
 | 路径 | 内容 |
 | :--- | :--- |
-| [config/base.json](config/base.json) | 颜色、字符串和 drawable 主题配置 |
-| [config/targets/](config/targets/) | 各版本的资源映射与主题配置 |
+| [config/theme.json](config/theme.json) | 颜色、字符串和 drawable 主题配置 |
+| [config/mappings/](config/mappings/) | 各版本的资源名称映射与上游信息 |
 | [config/latest.json](config/latest.json) | 发布版本与上游 APK 状态 |
 | [overlay/assets/drawable/](overlay/assets/drawable/) | drawable 源文件 |
 | [module_template/](module_template/) | 模块安装和启动脚本 |
@@ -145,6 +145,25 @@ KernelSU 动态包还支持以下功能：
 | [scripts/packaging.py](scripts/packaging.py) | 查找工具链，打包和签名产物 |
 | [scripts/release.py](scripts/release.py) | 管理模块版本、发布状态和更新清单 |
 | [scripts/paths.py](scripts/paths.py) | 集中管理项目路径 |
+
+</details>
+
+<details>
+<summary>编辑主题配置</summary>
+
+修改 [config/theme.json](config/theme.json)，在 `colors`、`strings`、`drawables` 中以资源原名作为键：
+
+| 类型 | 关键字段 | 用法 |
+| :--- | :--- | :--- |
+| `colors` | `default`、可选的 `night` | 分别配置默认资源与夜间资源的颜色 |
+| `strings` | `value` | 设置文本；空字符串表示清空，未设置该字段时保留原文 |
+| `drawables` | `source` | 指向项目内的源文件，使用相对于项目根目录的路径 |
+
+`default` 对应 `values`，`night` 对应 `values-night`。微信输入法的许多深色资源也在 `values` 中，例如 `ime_skin_dark_keyboard_background` 在自己的 `default` 中引用系统深色配色。
+
+条目中可以添加 `description`、`note` 等说明字段，资源生成只使用表中的关键字段。
+
+版本映射由构建脚本生成，保存上游版本、APK SHA256、更新日志和按资源类型划分的“原名 → 混淆名”映射。构建时将映射与当前主题合并使用。
 
 </details>
 

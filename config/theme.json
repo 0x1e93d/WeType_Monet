@@ -1,0 +1,414 @@
+{
+    "schema_version": 1,
+    "target_package": "com.tencent.wetype",
+    "colors": {
+        "White": {
+            "default": "@android:color/system_on_surface_light",
+            "night": "@android:color/system_on_surface_dark"
+        },
+        "ime_key_back_icon_color": {
+            "default": "@android:color/system_on_surface_light",
+            "night": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_candidate_start_color": {
+            "default": "@android:color/system_surface_container_light"
+        },
+        "ime_skin_candidate_end_color": {
+            "default": "@android:color/system_surface_container_light"
+        },
+        "ime_skin_keyboard_end_color": {
+            "default": "@android:color/system_surface_container_light"
+        },
+        "ime_skin_keyboard_background": {
+            "default": "@android:color/system_surface_container_light"
+        },
+        "ime_skin_dark_candidate_start_color": {
+            "default": "@android:color/system_surface_container_dark"
+        },
+        "ime_skin_dark_candidate_end_color": {
+            "default": "@android:color/system_surface_container_dark"
+        },
+        "ime_skin_dark_keyboard_end_color": {
+            "default": "@android:color/system_surface_container_dark"
+        },
+        "ime_skin_dark_keyboard_background": {
+            "default": "@android:color/system_surface_container_dark"
+        },
+        "ime_skin_black": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_black": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_06": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_06": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_18": {
+            "default": "@android:color/system_surface_container_lowest_light"
+        },
+        "ime_skin_dark_color_18": {
+            "default": "@android:color/system_surface_container_highest_dark"
+        },
+        "ime_skin_clipboard_item_bg_color": {
+            "default": "@android:color/system_surface_container_lowest_light"
+        },
+        "ime_skin_dark_clipboard_item_bg_color": {
+            "default": "@android:color/system_surface_container_highest_dark"
+        },
+        "ime_skin_candidate_right_container_icon_color": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_candidate_right_container_icon_color": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_04": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_04": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_08": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_08": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_candidate_type_container_bg_color_fixed": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_candidate_type_container_bg_color_fixed": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_S5_type_selected_color": {
+            "default": "@android:color/system_secondary_container_light"
+        },
+        "ime_skin_dark_S5_type_selected_color": {
+            "default": "@android:color/system_secondary_container_dark"
+        },
+        "ime_skin_color_16": {
+            "default": "@android:color/system_surface_container_lowest_light"
+        },
+        "ime_skin_dark_color_16": {
+            "default": "@android:color/system_surface_container_highest_dark"
+        },
+        "ime_skin_color_05": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_05": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_S5_img_type_icon_color_selected": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_S5_img_type_icon_color_selected": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_12": {
+            "default": "@android:color/system_surface_container_lowest_light"
+        },
+        "ime_skin_dark_color_12": {
+            "default": "@android:color/system_surface_container_highest_dark"
+        },
+        "ime_skin_color_btn_white_bg": {
+            "default": "@android:color/system_surface_container_lowest_light"
+        },
+        "ime_skin_dark_color_btn_white_bg": {
+            "default": "@android:color/system_surface_container_highest_dark"
+        },
+        "ime_skin_color_btn_white_text": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_btn_white_text": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_07": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_07": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_19": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_19": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_13": {
+            "default": "@android:color/system_secondary_container_light"
+        },
+        "ime_skin_dark_color_13": {
+            "default": "@android:color/system_secondary_container_dark"
+        },
+        "ime_skin_color_btn_green_bg": {
+            "default": "@android:color/system_secondary_container_light"
+        },
+        "ime_skin_dark_color_btn_green_bg": {
+            "default": "@android:color/system_secondary_container_dark"
+        },
+        "ime_skin_color_14": {
+            "default": "@android:color/system_secondary_container_light"
+        },
+        "ime_skin_dark_color_14": {
+            "default": "@android:color/system_secondary_container_dark"
+        },
+        "ime_skin_color_14_Alpha_20": {
+            "default": "@android:color/system_secondary_light"
+        },
+        "ime_skin_dark_color_14_Alpha_20": {
+            "default": "@android:color/system_secondary_dark"
+        },
+        "ime_skin_color_17": {
+            "default": "@android:color/system_secondary_container_light"
+        },
+        "ime_skin_dark_color_17": {
+            "default": "@android:color/system_secondary_container_dark"
+        },
+        "ime_skin_color_02": {
+            "default": "@android:color/system_on_surface_light"
+        },
+        "ime_skin_dark_color_02": {
+            "default": "@android:color/system_on_surface_dark"
+        },
+        "ime_skin_color_10": {
+            "default": "@android:color/system_surface_container_low_light"
+        },
+        "ime_skin_dark_color_10": {
+            "default": "@android:color/system_surface_container_high_dark"
+        },
+        "ime_skin_color_00_Alpha_15": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_00_Alpha_15": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_00_Alpha_25": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_00_Alpha_25": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_divider": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_divider": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_alternative_keyboard_bg_color": {
+            "default": "@android:color/system_surface_container_light"
+        },
+        "ime_skin_dark_alternative_keyboard_bg_color": {
+            "default": "@android:color/system_surface_container_dark"
+        },
+        "ime_candidate_syllable_select_bg_color_light": {
+            "default": "@android:color/system_primary_light"
+        },
+        "ime_candidate_syllable_select_bg_color_dark": {
+            "default": "@android:color/system_primary_dark"
+        },
+        "ime_skin_color_09": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_09": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_15": {
+            "default": "@android:color/system_surface_container_light"
+        },
+        "ime_skin_dark_color_15": {
+            "default": "@android:color/system_surface_container_dark"
+        },
+        "ime_skin_BW_97": {
+            "default": "@android:color/system_surface_container_light"
+        },
+        "ime_skin_dark_BW_97": {
+            "default": "@android:color/system_surface_container_dark"
+        },
+        "ime_skin_toolbar_select_bg_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_toolbar_select_bg_color": {
+            "default": "@android:color/transparent"
+        },
+        "UN_BW_0_Alpha_0_5": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_key_white_border_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_key_white_border_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_key_grey_border_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_key_grey_border_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_key_green_border_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_key_green_border_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_btn_white_border": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_btn_white_border": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_btn_grey_border": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_btn_grey_border": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_btn_green_border": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_btn_green_border": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_key_white_shadow_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_key_white_shadow_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_key_grey_shadow_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_key_grey_shadow_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_key_green_shadow_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_key_green_shadow_color": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_btn_white_shadow": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_btn_white_shadow": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_btn_grey_shadow": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_btn_grey_shadow": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_color_btn_green_shadow": {
+            "default": "@android:color/transparent"
+        },
+        "ime_skin_dark_color_btn_green_shadow": {
+            "default": "@android:color/transparent"
+        }
+    },
+    "strings": {
+        "ime_about_copyright": {
+            "value": "微信输入法 Monet"
+        },
+        "ime_custom_phrase_tips": {
+            "value": ""
+        },
+        "ime_about_copyright_en": {
+            "value": "作者: 酷安@1e93d"
+        }
+    },
+    "drawables": {
+        "bg_file_transfer_airdrop_pill_green": {
+            "source": "overlay/assets/drawable/bg_file_transfer_airdrop_pill_green.xml"
+        },
+        "icon_app_plus_setup_sticker": {
+            "source": "overlay/assets/drawable/icon_app_plus_setup_sticker.xml"
+        },
+        "icon_app_plus_setup_sticker_dark": {
+            "source": "overlay/assets/drawable/icon_app_plus_setup_sticker_dark.xml"
+        },
+        "icon_candidate_tip_toast_show": {
+            "source": "overlay/assets/drawable/icon_candidate_tip_toast_show.xml"
+        },
+        "icon_custom_toolbar_sticker": {
+            "source": "overlay/assets/drawable/icon_custom_toolbar_sticker.xml"
+        },
+        "icon_emojibar_sticker": {
+            "source": "overlay/assets/drawable/icon_emojibar_sticker.xml"
+        },
+        "icon_illustration_gif": {
+            "source": "overlay/assets/drawable/icon_illustration_gif.xml"
+        },
+        "icon_keys_back": {
+            "source": "overlay/assets/drawable/icon_keys_back.xml"
+        },
+        "icon_keys_back_pressed": {
+            "source": "overlay/assets/drawable/icon_keys_back_pressed.xml"
+        },
+        "icon_keys_capslock": {
+            "source": "overlay/assets/drawable/icon_keys_capslock.xml"
+        },
+        "icon_keys_capslock_dark": {
+            "source": "overlay/assets/drawable/icon_keys_capslock_dark.xml"
+        },
+        "icon_keys_capslocked": {
+            "source": "overlay/assets/drawable/icon_keys_capslocked.xml"
+        },
+        "icon_keys_capslocked_dark": {
+            "source": "overlay/assets/drawable/icon_keys_capslocked_dark.xml"
+        },
+        "icon_keys_delete": {
+            "source": "overlay/assets/drawable/icon_keys_delete.xml"
+        },
+        "icon_keys_delete_dark": {
+            "source": "overlay/assets/drawable/icon_keys_delete_dark.xml"
+        },
+        "icon_keys_delete_pressed": {
+            "source": "overlay/assets/drawable/icon_keys_delete_pressed.xml"
+        },
+        "icon_keys_emoji": {
+            "source": "overlay/assets/drawable/icon_keys_emoji.xml"
+        },
+        "icon_keys_emoji_dark": {
+            "source": "overlay/assets/drawable/icon_keys_emoji_dark.xml"
+        },
+        "icon_keys_outlinedcapslock": {
+            "source": "overlay/assets/drawable/icon_keys_outlinedcapslock.xml"
+        },
+        "icon_keys_outlinedcapslock_dark": {
+            "source": "overlay/assets/drawable/icon_keys_outlinedcapslock_dark.xml"
+        },
+        "icon_keys_voice": {
+            "source": "overlay/assets/drawable/icon_keys_voice.xml"
+        },
+        "icon_keys_voice_dark": {
+            "source": "overlay/assets/drawable/icon_keys_voice_dark.xml"
+        },
+        "icon_remarks_translate": {
+            "source": "overlay/assets/drawable/icon_remarks_translate.xml"
+        },
+        "icon_remarks_translate_dark": {
+            "source": "overlay/assets/drawable/icon_remarks_translate_dark.xml"
+        },
+        "icon_toolbar_sticker": {
+            "source": "overlay/assets/drawable/icon_toolbar_sticker.xml"
+        },
+        "icon_translate_arrow": {
+            "source": "overlay/assets/drawable/icon_translate_arrow.xml"
+        },
+        "icon_translate_arrow_dark": {
+            "source": "overlay/assets/drawable/icon_translate_arrow_dark.xml"
+        },
+        "icon_voice_sound": {
+            "source": "overlay/assets/drawable/icon_voice_sound.xml"
+        },
+        "ime_logo_green": {
+            "source": "overlay/assets/drawable/ime_logo_green.xml"
+        },
+        "ime_logo_green_dark": {
+            "source": "overlay/assets/drawable/ime_logo_green_dark.xml"
+        }
+    }
+}

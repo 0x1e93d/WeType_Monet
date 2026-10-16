@@ -11,13 +11,13 @@ from tests.build_fixtures import BuildTestCase
 
 class UpstreamTests(BuildTestCase):
     def test_download_skips_unchanged_apk_after_theme_changes(self):
-        self._write_base_config()
+        self._write_theme_config()
         state = self._write_latest_state()
         apk_content = b"official-apk"
         state["upstream"]["sha256"] = hashlib.sha256(apk_content).hexdigest()
         previous_state = json.dumps(state)
         self.paths.latest_config_path.write_text(previous_state, encoding="utf-8")
-        self.assertNotEqual(resources.get_base_sha256(self.paths), state["base_sha256"])
+        self.assertNotEqual(resources.get_theme_sha256(self.paths), state["base_sha256"])
 
         with (
             patch.object(upstream, "fetch_changelog_info", return_value=("1.0", "2026-01-01", [])),
