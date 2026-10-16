@@ -1,0 +1,53 @@
+name: Test build
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wetype-monet-test-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup build tools
+        uses: ./.github/actions/setup-build
+
+      - name: Build artifacts
+        env:
+          FORCE_BUILD: "true"
+        run: python scripts/build.py
+
+      - name: Read build metadata
+        id: metadata
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from pathlib import Path
+
+          metadata = json.loads(Path("out/internal/build-metadata.json").read_text(encoding="utf-8"))
+          with Path(os.environ["GITHUB_OUTPUT"]).open("a", encoding="utf-8") as output:
+              for key in ("zip_file", "official_apk_file", "monet_apk_file"):
+                  output.write(f"{key}={metadata[key]}\n")
+          PY
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: wetype-monet-test-${{ github.run_number }}
+          retention-days: 1
+          if-no-files-found: error
+          path: |
+            out/${{ steps.metadata.outputs.zip_file }}
+            out/${{ steps.metadata.outputs.official_apk_file }}
+            out/${{ steps.metadata.outputs.monet_apk_file }}

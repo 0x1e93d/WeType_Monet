@@ -1,0 +1,56 @@
+name: Setup WeType build tools
+description: 配置微信输入法构建工具链
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+      with:
+        python-version: "3.11"
+
+    - name: Prefer IPv4
+      shell: bash
+      run: echo 'precedence ::ffff:0:0/96  100' | sudo tee -a /etc/gai.conf
+
+    - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4
+      with:
+        distribution: temurin
+        java-version: "17"
+
+    - name: Setup Android SDK
+      uses: android-actions/setup-android@v3
+      with:
+        packages: ""
+
+    - name: Install Android SDK components
+      shell: bash
+      run: |
+        sdkmanager --licenses < <(yes) > /dev/null
+        sdkmanager --install "platform-tools" "build-tools;35.0.0" "platforms;android-35"
+
+    - name: Install build tools
+      shell: bash
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y zipalign apksigner
+        APKTOOL_VER="2.9.3"
+        APKTOOL_COMMIT="3bb7888eb47103a1ba13c86b8a90a4d9614c9e7c"
+        APKTOOL_SCRIPT_SHA256="2e18434d91810bef9cd562bb486246eaec08ac368f0d810214a57b6c3a967ae7"
+        APKTOOL_JAR_SHA256="7956eb04194300ce0d0a84ad18771eebc94b89fb8d1ddcce8ea4c056818646f4"
+        curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+          "https://raw.githubusercontent.com/iBotPeaches/Apktool/${APKTOOL_COMMIT}/scripts/linux/apktool" \
+          --output /tmp/apktool
+        curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+          "https://github.com/iBotPeaches/Apktool/releases/download/v${APKTOOL_VER}/apktool_${APKTOOL_VER}.jar" \
+          --output /tmp/apktool.jar
+        echo "${APKTOOL_SCRIPT_SHA256}  /tmp/apktool" | sha256sum --check --status
+        echo "${APKTOOL_JAR_SHA256}  /tmp/apktool.jar" | sha256sum --check --status
+        sudo install -m 0755 /tmp/apktool /usr/local/bin/apktool
+        sudo install -m 0644 /tmp/apktool.jar /usr/local/bin/apktool.jar
+        BCPROV_VER="1.78.1"
+        BCPROV_SHA256="add5915e6acfc6ab5836e1fd8a5e21c6488536a8c1f21f386eeb3bf280b702d7"
+        curl --fail --location --retry 3 --proto '=https' --tlsv1.2 \
+          "https://repo1.maven.org/maven2/org/bouncycastle/bcprov-jdk18on/${BCPROV_VER}/bcprov-jdk18on-${BCPROV_VER}.jar" \
+          --output /tmp/bcprov.jar
+        echo "${BCPROV_SHA256}  /tmp/bcprov.jar" | sha256sum --check --status
+        echo "BCPROV_JAR_PATH=/tmp/bcprov.jar" >> "$GITHUB_ENV"
