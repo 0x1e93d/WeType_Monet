@@ -1,10 +1,12 @@
+import hashlib
 import importlib.util
 import json
 import tempfile
 import unittest
 from contextlib import redirect_stdout
-from io import StringIO
+from io import BytesIO, StringIO
 from pathlib import Path
+from unittest.mock import patch
 
 
 SCRIPT_PATH = Path(__file__).resolve().parents[1] / "scripts" / "build.py"
@@ -192,17 +194,54 @@ class BuildMappingTests(unittest.TestCase):
         )
         self.assertEqual(build.get_latest_sha256(), ("targets/1.0(1).json", "a" * 64))
 
-    def test_should_build_for_apk_or_base_changes(self):
+    def test_should_skip_unchanged_apk(self):
         state = self._write_latest_state()
-        self.assertFalse(build.should_build("a" * 64, "b" * 64, state))
-        self.assertTrue(build.should_build("c" * 64, "b" * 64, state))
-        self.assertTrue(build.should_build("a" * 64, "d" * 64, state))
-        self.assertTrue(build.should_build("a" * 64, "b" * 64, None))
+
+        self.assertFalse(build.should_build("a" * 64, state))
+
+    def test_should_build_for_apk_changes(self):
+        state = self._write_latest_state()
+
+        self.assertTrue(build.should_build("c" * 64, state))
+
+    def test_should_ignore_recorded_base_hash(self):
+        state = self._write_latest_state(base_sha="d")
+
+        self.assertFalse(build.should_build("a" * 64, state))
+
+    def test_should_build_without_previous_state(self):
+        self.assertTrue(build.should_build("a" * 64, None))
+
+    def test_should_ignore_apk_hash_case(self):
+        state = self._write_latest_state()
+
+        self.assertFalse(build.should_build("A" * 64, state))
 
     def test_should_build_when_forced_even_without_input_changes(self):
         state = self._write_latest_state()
 
-        self.assertTrue(build.should_build("a" * 64, "b" * 64, state, force_build=True))
+        self.assertTrue(build.should_build("a" * 64, state, force_build=True))
+
+    def test_download_skips_unchanged_apk_after_theme_changes(self):
+        self._write_base_config()
+        state = self._write_latest_state()
+        apk_content = b"official-apk"
+        state["upstream"]["sha256"] = hashlib.sha256(apk_content).hexdigest()
+        previous_state = json.dumps(state)
+        build.LATEST_CONFIG_PATH.write_text(previous_state, encoding="utf-8")
+        self.assertNotEqual(build.get_base_sha256(), state["base_sha256"])
+
+        with (
+            patch.object(build, "fetch_changelog_info", return_value=("1.0", "2026-01-01", [])),
+            patch.object(build.urllib.request, "urlopen", return_value=BytesIO(apk_content)),
+            patch.object(build.subprocess, "run", side_effect=AssertionError("APK 未变化时不应调用解包工具")),
+            redirect_stdout(StringIO()),
+        ):
+            result = build.download_and_decompile_apk()
+
+        self.assertIsNone(result)
+        self.assertEqual(build.DOWNLOAD_APK_PATH.read_bytes(), apk_content)
+        self.assertEqual(build.LATEST_CONFIG_PATH.read_text(encoding="utf-8"), previous_state)
 
     def test_overlay_signing_command_uses_public_lspatch_keystore(self):
         command = build.get_apksigner_sign_command(

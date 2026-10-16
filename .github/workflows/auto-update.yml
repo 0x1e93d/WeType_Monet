@@ -1,19 +1,7 @@
 name: Auto check WeType version and release
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - ".github/workflows/auto-update.yml"
-      - "config/base.json"
-      - "config/latest.json"
-      - "config/targets/**"
-      - "wetype_monet.json"
-      - "module_template/**"
-      - "overlay/**"
-      - "scripts/**"
-      - "tests/**"
-
+  # 自动检查与手动更新共用构建流程。
   schedule:
     - cron: "17 6 * * *"
       timezone: "Asia/Shanghai"
@@ -21,7 +9,7 @@ on:
   workflow_call:
     inputs:
       force_build:
-        description: "Force a new module version even when upstream inputs are unchanged"
+        description: "强制生成新的模块版本"
         required: false
         type: boolean
         default: false
@@ -44,10 +32,16 @@ jobs:
       - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
-      - name: Run mapping tests
+      - name: Run Python tests
         run: python -m unittest discover -s tests -v
       - name: Check build script syntax
         run: python -B -c "from pathlib import Path; compile(Path('scripts/build.py').read_text(encoding='utf-8'), 'scripts/build.py', 'exec')"
+      - name: Check shell script syntax
+        shell: bash
+        run: |
+          for file in module_template/*.sh module_template/META-INF/com/google/android/update-binary; do
+            sh -n "$file"
+          done
 
   build:
     needs: test
@@ -157,32 +151,6 @@ jobs:
           )
           PY
 
-      - name: Collect submitted changes
-        id: changes
-        if: github.event_name == 'push'
-        env:
-          BEFORE_SHA: ${{ github.event.before }}
-          AFTER_SHA: ${{ github.sha }}
-        run: |
-          python - <<'PY'
-          import os
-          import subprocess
-          import uuid
-
-          before = os.environ["BEFORE_SHA"]
-          after = os.environ["AFTER_SHA"]
-          revision = after if before == "0000000000000000000000000000000000000000" else f"{before}..{after}"
-          summary = subprocess.run(
-              ["git", "log", "--format=- %s (%h)", revision],
-              check=True,
-              capture_output=True,
-              text=True,
-          ).stdout.rstrip()
-          delimiter = f"ghadelimiter_{uuid.uuid4().hex}"
-          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as output:
-              output.write(f"summary<<{delimiter}\n{summary}\n{delimiter}\n")
-          PY
-
       - name: Upload build artifacts
         if: steps.metadata.outputs.built == 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -215,10 +183,8 @@ jobs:
             ### 构建信息
             - 模块版本：${{ steps.metadata.outputs.module_version }}（版本代码：${{ steps.metadata.outputs.version_code }}）
             - 构建时间：${{ steps.metadata.outputs.build_time }}
+            - 构建来源：${{ inputs.force_build && '手动更新' || '自动更新' }}
             - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
-
-            ### 本次变更
-            ${{ steps.changes.outputs.summary || '- 自动检测到上游 APK 或基础资源配置更新。' }}
           files: |
             out/${{ steps.metadata.outputs.zip_file }}
             out/${{ steps.metadata.outputs.official_apk_file }}
@@ -233,5 +199,5 @@ jobs:
           if git diff --cached --quiet; then
             exit 0
           fi
-          git commit -m "发布：更新模块状态与资源映射"
+          git commit -m "chore: 更新发布状态与资源映射"
           git push

@@ -41,8 +41,15 @@
 - `wetype_monet.json`：KernelSU/Magisk 在线更新清单，会在每次成功发布后更新。
 - `CHANGELOG.md`：KernelSU 在线更新界面展示的独立 Markdown 更新日志。
 
-Release 页面会记录模块版本、适配的微信输入法版本和本次提交摘要。
+Release 页面会记录模块版本、适配的微信输入法版本、官方更新日志和构建来源。
 
-## 自动构建
+## 构建与发布
 
-GitHub Actions 每天北京时间 06:00 检查微信输入法更新，也会在核心文件提交到 `main` 时触发。上游 APK 或 `config/base.json` 的有效内容发生变化时，流水线会递增模块版本，并生成对应的 ZIP、官方 APK 归档和 Monet APK。
+自动更新和手动更新共用测试、构建与发布流程：
+
+- **自动更新**：每天北京时间 06:17 检查官方 APK，SHA256 变化或缺少有效发布状态时构建发布。
+- **手动更新**：在 GitHub Actions 中运行 `Manual force update`，强制生成并发布新版本。
+
+主题资源和代码修改通过手动更新发布。
+
+构建前运行 Python 测试，并检查 Python 和 Shell 语法。本地可运行 `python -B -m unittest discover -s tests -v` 检查改动。

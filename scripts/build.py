@@ -231,21 +231,17 @@ def get_latest_sha256() -> tuple[str | None, str | None]:
 
 def should_build(
     apk_sha256: str,
-    base_sha256: str,
     latest_state: dict | None,
     *,
     force_build: bool = False,
 ) -> bool:
-    """在输入变化或显式强制时请求构建。"""
+    """根据上游 APK 和强制构建选项判断是否构建。"""
     if force_build:
         return True
     if latest_state is None:
         return True
     upstream = latest_state["upstream"]
-    return (
-        apk_sha256.lower() != upstream["sha256"].lower()
-        or base_sha256.lower() != latest_state["base_sha256"].lower()
-    )
+    return apk_sha256.lower() != upstream["sha256"].lower()
 
 
 def get_existing_module_versions() -> set[int]:
@@ -516,10 +512,10 @@ def download_and_decompile_apk(
     new_sha256 = calculate_sha256(DOWNLOAD_APK_PATH)
     print(f"[+] 下载完成，当前 APK SHA256: {new_sha256}")
 
-    base_sha256 = get_base_sha256()
     latest_state = get_latest_build_state()
-    if not should_build(new_sha256, base_sha256, latest_state, force_build=force_build):
-        print("[=] 上游 APK 与 base.json 有效内容均未变化，无需构建。")
+    # 主题资源变更通过手动更新发布。
+    if not should_build(new_sha256, latest_state, force_build=force_build):
+        print("[=] 官方 APK 未更新，跳过构建。")
         return None
 
     print(f"[*] 开始使用 Apktool 解包 APK -> {DECOMPILE_DIR}")

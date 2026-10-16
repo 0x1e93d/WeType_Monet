@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
     inputs:
       confirm:
-        description: "Confirm that a new module version should be generated"
+        description: "强制生成新的模块版本"
         required: true
         type: boolean
         default: true
