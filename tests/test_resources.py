@@ -30,9 +30,58 @@ class ResourcesTests(BuildTestCase):
         self.assertIn("missing_string", output.getvalue())
 
     def test_fails_for_unmapped_drawable(self):
-        self._write_theme_config(drawables={"missing_drawable": {"source": "overlay/assets/drawable/source.xml"}})
+        self._write_theme_config(drawables={"missing_drawable": {"source": "assets/drawable/source.xml"}})
         with self.assertRaisesRegex(RuntimeError, "missing_drawable"):
             resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+
+    def test_regeneration_removes_deleted_drawable(self):
+        theme = self._write_theme_config()
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        resources.sync_src_resources(self.paths, config_path)
+        drawable_path = self.paths.overlay_dir / "res/drawable/c.xml"
+        self.assertTrue(drawable_path.is_file())
+        theme["drawables"] = {}
+        self.paths.theme_config_path.write_text(json.dumps(theme), encoding="utf-8")
+
+        resources.sync_src_resources(self.paths, config_path)
+
+        self.assertFalse(drawable_path.exists())
+
+    def test_regeneration_removes_old_drawable_mapping(self):
+        self._write_theme_config()
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        resources.sync_src_resources(self.paths, config_path)
+        mapping = json.loads(config_path.read_text(encoding="utf-8"))
+        mapping["drawables"]["drawable_key"] = "renamed"
+        config_path.write_text(json.dumps(mapping), encoding="utf-8")
+
+        resources.sync_src_resources(self.paths, config_path)
+
+        self.assertFalse((self.paths.overlay_dir / "res/drawable/c.xml").exists())
+        self.assertTrue((self.paths.overlay_dir / "res/drawable/renamed.xml").is_file())
+
+    def test_regeneration_rebuilds_overlay_workspace(self):
+        self._write_theme_config()
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        resources.sync_src_resources(self.paths, config_path)
+        stale_file = self.paths.overlay_dir / "compiled.zip"
+        stale_file.write_bytes(b"previous-build")
+
+        resources.sync_src_resources(self.paths, config_path)
+
+        self.assertFalse(stale_file.exists())
+
+    def test_generated_resources_preserve_source_assets(self):
+        theme = self._write_theme_config()
+        source_path = self.root / theme["drawables"]["drawable_key"]["source"]
+        source_content = source_path.read_bytes()
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+
+        resources.sync_src_resources(self.paths, config_path)
+
+        self.assertTrue((self.root / "out/overlay/res/drawable/c.xml").is_file())
+        self.assertEqual(source_path.read_bytes(), source_content)
+        self.assertFalse((self.root / "overlay/res").exists())
 
     def test_canonical_json_hash_ignores_formatting(self):
         self.paths.theme_config_path.write_text('{"b": 2, "a": 1}', encoding="utf-8")
@@ -88,7 +137,7 @@ class ResourcesTests(BuildTestCase):
         self.assertIn("xmlns:android", drawable)
 
     def test_fails_for_missing_drawable_source(self):
-        self._write_theme_config(drawables={"drawable_key": {"source": "overlay/assets/drawable/missing.xml"}})
+        self._write_theme_config(drawables={"drawable_key": {"source": "assets/drawable/missing.xml"}})
         config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
         with self.assertRaisesRegex(FileNotFoundError, "源文件不存在"):
             resources.sync_src_resources(self.paths, config_path)
@@ -101,7 +150,7 @@ class ResourcesTests(BuildTestCase):
         drawables = theme["drawables"]
         configured_names = {Path(item["source"]).name for item in drawables.values()}
         source_names = {
-            path.name for path in (repository_root / "overlay" / "assets" / "drawable").glob("*") if path.is_file()
+            path.name for path in (repository_root / "assets" / "drawable").glob("*") if path.is_file()
         }
 
         self.assertEqual(configured_names, source_names)

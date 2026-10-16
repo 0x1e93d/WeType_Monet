@@ -21,6 +21,7 @@ class PackagingTests(BuildTestCase):
         self.assertNotIn("androiddebugkey", command)
 
     def test_archive_official_apk_uses_release_filename(self):
+        self.paths.download_apk_path.parent.mkdir(parents=True, exist_ok=True)
         self.paths.download_apk_path.write_bytes(b"official-apk")
         config_path = self.paths.mapping_config_dir / "3.5.2(55201).json"
         zip_path = self.paths.out_dir / "Wetype_Monet_v2.zip"

@@ -4,6 +4,7 @@ import os
 import shutil
 import subprocess
 import unittest
+import xml.etree.ElementTree as ET
 import zipfile
 from contextlib import redirect_stdout
 from io import BytesIO, StringIO
@@ -41,7 +42,6 @@ class BuildPipelineTests(BuildTestCase):
             encoding="utf-8",
         )
         shutil.copytree(PROJECT_ROOT / "module_template", self.paths.template_dir)
-        shutil.copy2(PROJECT_ROOT / "overlay/AndroidManifest.xml", self.paths.overlay_dir)
         self.paths.public_signing_bks_path.parent.mkdir()
         self.paths.public_signing_bks_path.write_bytes(b"public-signing-fixture")
 
@@ -143,7 +143,43 @@ class BuildPipelineTests(BuildTestCase):
         self.assertEqual(self.paths.latest_config_path.read_text(encoding="utf-8"), self.previous_state)
         self.assertFalse(self.paths.build_metadata_path.exists())
         self.assertFalse(self.paths.update_json_path.exists())
-        self.assertFalse(self.paths.build_tmp_dir.exists())
+        self.assertFalse(self.paths.module_dir.exists())
+
+    def test_build_uses_separate_workspaces_and_generated_manifest(self):
+        self.run_build()
+
+        self.assertTrue((self.root / "out/apk/official.apk").is_file())
+        self.assertEqual((self.root / "out/apk/official.apk").read_bytes(), self.apk_content)
+        decoded_manifest = ET.parse(self.root / "out/apk/decoded/AndroidManifest.xml")
+        self.assertEqual(decoded_manifest.getroot().get("package"), "com.tencent.wetype")
+        overlay_manifest = ET.parse(self.root / "out/overlay/AndroidManifest.xml").getroot()
+        android_prefix = "{http://schemas.android.com/apk/res/android}"
+        self.assertEqual(overlay_manifest.get("package"), "monet.com.tencent.wetype")
+        self.assertEqual(overlay_manifest.find("uses-sdk").get(android_prefix + "minSdkVersion"), "34")
+        self.assertEqual(overlay_manifest.find("uses-sdk").get(android_prefix + "targetSdkVersion"), "36")
+        self.assertEqual(overlay_manifest.find("overlay").get(android_prefix + "targetPackage"), "com.tencent.wetype")
+        self.assertEqual((self.root / "out/overlay/WetypeMonet.apk").read_bytes(), b"overlay-apk")
+        self.assertEqual((self.root / "out/module/files/WetypeMonet.apk").read_bytes(), b"overlay-apk")
+        for filename in ("unsigned.apk", "aligned.apk", "monet-unsigned.apk", "monet-aligned.apk", "compiled.zip"):
+            self.assertFalse((self.paths.out_dir / filename).exists())
+
+    def test_repeated_build_clears_previous_workspaces(self):
+        self.run_build()
+        stale_files = [
+            self.paths.decompile_dir / "res/drawable/obsolete.xml",
+            self.paths.overlay_dir / "res/drawable/obsolete.xml",
+            self.paths.module_dir / "obsolete.txt",
+        ]
+        for stale_file in stale_files:
+            stale_file.write_bytes(b"previous-build")
+
+        self.run_build()
+
+        for stale_file in stale_files:
+            self.assertFalse(stale_file.exists())
+        metadata = json.loads(self.paths.build_metadata_path.read_text(encoding="utf-8"))
+        with zipfile.ZipFile(self.paths.out_dir / metadata["zip_file"]) as archive:
+            self.assertNotIn("obsolete.txt", archive.namelist())
 
     def test_failed_build_preserves_release_state_and_cleans_keystore(self):
         self.fail_link = True

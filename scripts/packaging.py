@@ -174,8 +174,8 @@ def build_monet_apk(
     _, zipalign, apksigner, _ = find_sdk_tools()
     ensure_original_package_name(paths)
     resources.apply_monet_resources(paths, config_file)
-    unsigned_apk = paths.out_dir / "monet-unsigned.apk"
-    aligned_apk = paths.out_dir / "monet-aligned.apk"
+    unsigned_apk = paths.apk_dir / "unsigned.apk"
+    aligned_apk = paths.apk_dir / "aligned.apk"
     final_apk = paths.out_dir / release.get_monet_apk_filename(apk_name, apk_code, module_version)
     for path in (unsigned_apk, aligned_apk, final_apk, Path(f"{final_apk}.idsig")):
         if path.exists():
@@ -195,20 +195,47 @@ def build_monet_apk(
     return final_apk
 
 
+def write_overlay_manifest(paths: BuildPaths) -> Path:
+    """生成 Overlay 清单，统一声明覆盖目标与 SDK 版本。"""
+    manifest_path = paths.overlay_dir / "AndroidManifest.xml"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+    manifest_path.write_text(
+        """<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="monet.com.tencent.wetype"
+    android:versionCode="1"
+    android:versionName="1.0">
+    <uses-sdk
+        android:minSdkVersion="34"
+        android:targetSdkVersion="36"/>
+    <overlay
+        android:isStatic="false"
+        android:priority="10"
+        android:targetPackage="com.tencent.wetype"/>
+    <application
+        android:extractNativeLibs="false"
+        android:hasCode="false"/>
+</manifest>
+""",
+        encoding="utf-8",
+    )
+    return manifest_path
+
+
 def build_overlay_apk(paths: BuildPaths, signing_keystore: Path):
     """编译并签名 Overlay APK"""
     aapt2, zipalign, apksigner, android_jar = find_sdk_tools()
 
-    target_apk_dir = paths.build_tmp_dir / "files"
+    target_apk_dir = paths.module_dir / "files"
     target_apk_dir.mkdir(parents=True, exist_ok=True)
 
-    compiled_zip = paths.out_dir / "compiled.zip"
-    unsigned_apk = paths.out_dir / "unsigned.apk"
-    aligned_apk = paths.out_dir / "aligned.apk"
-    final_apk = target_apk_dir / "WetypeMonet.apk"
+    compiled_zip = paths.overlay_dir / "compiled.zip"
+    unsigned_apk = paths.overlay_dir / "unsigned.apk"
+    aligned_apk = paths.overlay_dir / "aligned.apk"
+    final_apk = paths.overlay_dir / "WetypeMonet.apk"
 
     res_dir = paths.overlay_dir / "res"
-    manifest_xml = paths.overlay_dir / "AndroidManifest.xml"
+    manifest_xml = write_overlay_manifest(paths)
 
     print("[1/4] 编译资源 (aapt2 compile)...")
     res = subprocess.run(
@@ -226,8 +253,6 @@ def build_overlay_apk(paths: BuildPaths, signing_keystore: Path):
         "-o", str(unsigned_apk),
         str(compiled_zip),
         "--auto-add-overlay",
-        "--min-sdk-version", "26",
-        "--target-sdk-version", "35"
     ]
     res = subprocess.run(link_cmd, capture_output=True, text=True, encoding="utf-8", errors="ignore")
     if res.returncode != 0:
@@ -244,6 +269,7 @@ def build_overlay_apk(paths: BuildPaths, signing_keystore: Path):
 
     sign_cmd = get_apksigner_sign_command(apksigner, signing_keystore, final_apk, aligned_apk)
     subprocess.run(sign_cmd, check=True)
+    shutil.copy2(final_apk, target_apk_dir / final_apk.name)
 
     for tmp in [compiled_zip, unsigned_apk, aligned_apk, Path(f"{final_apk}.idsig")]:
         if tmp.exists():
@@ -254,12 +280,12 @@ def build_overlay_apk(paths: BuildPaths, signing_keystore: Path):
 
 def prepare_template(paths: BuildPaths):
     """同步模块模板结构"""
-    if paths.build_tmp_dir.exists():
-        shutil.rmtree(paths.build_tmp_dir, ignore_errors=True)
-    paths.build_tmp_dir.mkdir(parents=True, exist_ok=True)
+    if paths.module_dir.exists():
+        shutil.rmtree(paths.module_dir)
+    paths.module_dir.mkdir(parents=True, exist_ok=True)
 
     if paths.template_dir.exists():
-        shutil.copytree(paths.template_dir, paths.build_tmp_dir, dirs_exist_ok=True)
+        shutil.copytree(paths.template_dir, paths.module_dir, dirs_exist_ok=True)
 
 
 def create_module_zip(paths: BuildPaths, module_version: int) -> Path:
@@ -271,9 +297,9 @@ def create_module_zip(paths: BuildPaths, module_version: int) -> Path:
         zip_path.unlink()
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as archive:
-        for file_path in paths.build_tmp_dir.rglob("*"):
+        for file_path in paths.module_dir.rglob("*"):
             if file_path.is_file():
-                arcname = file_path.relative_to(paths.build_tmp_dir)
+                arcname = file_path.relative_to(paths.module_dir)
                 archive.write(file_path, arcname)
 
     print(f"[+] 刷机包构建成功: {zip_path}")

@@ -13,16 +13,24 @@ class BuildPaths:
         return self.project_root / "config"
 
     @property
-    def overlay_dir(self) -> Path:
-        return self.project_root / "overlay"
+    def assets_dir(self) -> Path:
+        return self.project_root / "assets"
 
     @property
     def out_dir(self) -> Path:
         return self.project_root / "out"
 
     @property
-    def build_tmp_dir(self) -> Path:
-        return self.out_dir / "build_tmp"
+    def apk_dir(self) -> Path:
+        return self.out_dir / "apk"
+
+    @property
+    def overlay_dir(self) -> Path:
+        return self.out_dir / "overlay"
+
+    @property
+    def module_dir(self) -> Path:
+        return self.out_dir / "module"
 
     @property
     def template_dir(self) -> Path:
@@ -30,7 +38,7 @@ class BuildPaths:
 
     @property
     def decompile_dir(self) -> Path:
-        return self.out_dir / "decompiled_apk"
+        return self.apk_dir / "decoded"
 
     @property
     def build_metadata_path(self) -> Path:
@@ -58,7 +66,7 @@ class BuildPaths:
 
     @property
     def download_apk_path(self) -> Path:
-        return self.out_dir / "wetype_latest.apk"
+        return self.apk_dir / "official.apk"
 
     @property
     def public_signing_bks_path(self) -> Path:

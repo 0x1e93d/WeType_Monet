@@ -255,7 +255,7 @@ def generate_module_prop(paths: BuildPaths, module_version: int) -> tuple[str, s
         f"description={description}",
         f"updateJson={UPDATE_JSON_URL}",
     ]
-    (paths.build_tmp_dir / "module.prop").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    (paths.module_dir / "module.prop").write_text("\n".join(lines) + "\n", encoding="utf-8")
     print(f"[+] module.prop 生成完成 (Version: {version_name}, Code: {version_code})")
     return version_name, version_code
 

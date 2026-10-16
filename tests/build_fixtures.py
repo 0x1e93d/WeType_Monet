@@ -50,7 +50,7 @@ class BuildTestCase(unittest.TestCase):
         (nested / "ignored.smali").write_text(
             '.field public static final ignored_key:I = 0x7f060002', encoding="utf-8"
         )
-        source_drawable = self.root / "overlay" / "assets" / "drawable" / "source.xml"
+        source_drawable = self.paths.assets_dir / "drawable" / "source.xml"
         source_drawable.parent.mkdir(parents=True)
         source_drawable.write_text('<vector xmlns:android="http://schemas.android.com/apk/res/android" />', encoding="utf-8")
         values_dir = self.paths.decompile_dir / "res" / "values"
@@ -75,7 +75,7 @@ class BuildTestCase(unittest.TestCase):
             },
             "drawables": drawables
             if drawables is not None
-            else {"drawable_key": {"source": "overlay/assets/drawable/source.xml", "description": "图标"}},
+            else {"drawable_key": {"source": "assets/drawable/source.xml", "description": "图标"}},
         }
         self.paths.theme_config_path.write_text(json.dumps(payload), encoding="utf-8")
         return payload

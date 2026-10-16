@@ -67,10 +67,10 @@ class ReleaseTests(BuildTestCase):
         self.assertTrue(release.should_build("a" * 64, state, force_build=True))
 
     def test_module_metadata_uses_latest_integer_version(self):
-        self.paths.build_tmp_dir.mkdir(parents=True)
+        self.paths.module_dir.mkdir(parents=True)
 
         self.assertEqual(release.generate_module_prop(self.paths, 2), ("v2", "2"))
-        module_prop = (self.paths.build_tmp_dir / "module.prop").read_text(encoding="utf-8")
+        module_prop = (self.paths.module_dir / "module.prop").read_text(encoding="utf-8")
         self.assertIn("version=v2", module_prop)
         self.assertIn("versionCode=2", module_prop)
         self.assertIn(f"updateJson={release.UPDATE_JSON_URL}", module_prop)

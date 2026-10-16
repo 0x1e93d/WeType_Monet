@@ -174,6 +174,7 @@ def download_and_decompile_apk(
     web_version, release_date, changelog = fetch_changelog_info()
 
     print(f"[*] 正在下载最新官方 APK: {APK_URL}")
+    paths.download_apk_path.parent.mkdir(parents=True, exist_ok=True)
     req = urllib.request.Request(APK_URL, headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'})
     with urllib.request.urlopen(req) as resp, open(paths.download_apk_path, 'wb') as out_file:
         shutil.copyfileobj(resp, out_file)
@@ -189,7 +190,7 @@ def download_and_decompile_apk(
 
     print(f"[*] 开始使用 Apktool 解包 APK -> {paths.decompile_dir}")
     if paths.decompile_dir.exists():
-        shutil.rmtree(paths.decompile_dir, ignore_errors=True)
+        shutil.rmtree(paths.decompile_dir)
 
     res = subprocess.run(
         ["apktool", "d", str(paths.download_apk_path), "-o", str(paths.decompile_dir), "-f"],

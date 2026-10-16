@@ -214,8 +214,10 @@ def write_xml_resource_file(path: Path, entries: list[str]):
 
 
 def sync_src_resources(paths: BuildPaths, config_file: Path):
-    """根据当前主题与版本映射生成 Overlay 资源。"""
+    """重建 Overlay 工作目录，根据当前主题与版本映射生成资源。"""
     config_data = load_mapped_theme_resources(paths, config_file)
+    if paths.overlay_dir.exists():
+        shutil.rmtree(paths.overlay_dir)
     res_dir = paths.overlay_dir / "res"
     default_entries: list[str] = []
     night_entries: list[str] = []

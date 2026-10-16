@@ -321,94 +321,94 @@
     },
     "drawables": {
         "bg_file_transfer_airdrop_pill_green": {
-            "source": "overlay/assets/drawable/bg_file_transfer_airdrop_pill_green.xml"
+            "source": "assets/drawable/bg_file_transfer_airdrop_pill_green.xml"
         },
         "icon_app_plus_setup_sticker": {
-            "source": "overlay/assets/drawable/icon_app_plus_setup_sticker.xml"
+            "source": "assets/drawable/icon_app_plus_setup_sticker.xml"
         },
         "icon_app_plus_setup_sticker_dark": {
-            "source": "overlay/assets/drawable/icon_app_plus_setup_sticker_dark.xml"
+            "source": "assets/drawable/icon_app_plus_setup_sticker_dark.xml"
         },
         "icon_candidate_tip_toast_show": {
-            "source": "overlay/assets/drawable/icon_candidate_tip_toast_show.xml"
+            "source": "assets/drawable/icon_candidate_tip_toast_show.xml"
         },
         "icon_custom_toolbar_sticker": {
-            "source": "overlay/assets/drawable/icon_custom_toolbar_sticker.xml"
+            "source": "assets/drawable/icon_custom_toolbar_sticker.xml"
         },
         "icon_emojibar_sticker": {
-            "source": "overlay/assets/drawable/icon_emojibar_sticker.xml"
+            "source": "assets/drawable/icon_emojibar_sticker.xml"
         },
         "icon_illustration_gif": {
-            "source": "overlay/assets/drawable/icon_illustration_gif.xml"
+            "source": "assets/drawable/icon_illustration_gif.xml"
         },
         "icon_keys_back": {
-            "source": "overlay/assets/drawable/icon_keys_back.xml"
+            "source": "assets/drawable/icon_keys_back.xml"
         },
         "icon_keys_back_pressed": {
-            "source": "overlay/assets/drawable/icon_keys_back_pressed.xml"
+            "source": "assets/drawable/icon_keys_back_pressed.xml"
         },
         "icon_keys_capslock": {
-            "source": "overlay/assets/drawable/icon_keys_capslock.xml"
+            "source": "assets/drawable/icon_keys_capslock.xml"
         },
         "icon_keys_capslock_dark": {
-            "source": "overlay/assets/drawable/icon_keys_capslock_dark.xml"
+            "source": "assets/drawable/icon_keys_capslock_dark.xml"
         },
         "icon_keys_capslocked": {
-            "source": "overlay/assets/drawable/icon_keys_capslocked.xml"
+            "source": "assets/drawable/icon_keys_capslocked.xml"
         },
         "icon_keys_capslocked_dark": {
-            "source": "overlay/assets/drawable/icon_keys_capslocked_dark.xml"
+            "source": "assets/drawable/icon_keys_capslocked_dark.xml"
         },
         "icon_keys_delete": {
-            "source": "overlay/assets/drawable/icon_keys_delete.xml"
+            "source": "assets/drawable/icon_keys_delete.xml"
         },
         "icon_keys_delete_dark": {
-            "source": "overlay/assets/drawable/icon_keys_delete_dark.xml"
+            "source": "assets/drawable/icon_keys_delete_dark.xml"
         },
         "icon_keys_delete_pressed": {
-            "source": "overlay/assets/drawable/icon_keys_delete_pressed.xml"
+            "source": "assets/drawable/icon_keys_delete_pressed.xml"
         },
         "icon_keys_emoji": {
-            "source": "overlay/assets/drawable/icon_keys_emoji.xml"
+            "source": "assets/drawable/icon_keys_emoji.xml"
         },
         "icon_keys_emoji_dark": {
-            "source": "overlay/assets/drawable/icon_keys_emoji_dark.xml"
+            "source": "assets/drawable/icon_keys_emoji_dark.xml"
         },
         "icon_keys_outlinedcapslock": {
-            "source": "overlay/assets/drawable/icon_keys_outlinedcapslock.xml"
+            "source": "assets/drawable/icon_keys_outlinedcapslock.xml"
         },
         "icon_keys_outlinedcapslock_dark": {
-            "source": "overlay/assets/drawable/icon_keys_outlinedcapslock_dark.xml"
+            "source": "assets/drawable/icon_keys_outlinedcapslock_dark.xml"
         },
         "icon_keys_voice": {
-            "source": "overlay/assets/drawable/icon_keys_voice.xml"
+            "source": "assets/drawable/icon_keys_voice.xml"
         },
         "icon_keys_voice_dark": {
-            "source": "overlay/assets/drawable/icon_keys_voice_dark.xml"
+            "source": "assets/drawable/icon_keys_voice_dark.xml"
         },
         "icon_remarks_translate": {
-            "source": "overlay/assets/drawable/icon_remarks_translate.xml"
+            "source": "assets/drawable/icon_remarks_translate.xml"
         },
         "icon_remarks_translate_dark": {
-            "source": "overlay/assets/drawable/icon_remarks_translate_dark.xml"
+            "source": "assets/drawable/icon_remarks_translate_dark.xml"
         },
         "icon_toolbar_sticker": {
-            "source": "overlay/assets/drawable/icon_toolbar_sticker.xml"
+            "source": "assets/drawable/icon_toolbar_sticker.xml"
         },
         "icon_translate_arrow": {
-            "source": "overlay/assets/drawable/icon_translate_arrow.xml"
+            "source": "assets/drawable/icon_translate_arrow.xml"
         },
         "icon_translate_arrow_dark": {
-            "source": "overlay/assets/drawable/icon_translate_arrow_dark.xml"
+            "source": "assets/drawable/icon_translate_arrow_dark.xml"
         },
         "icon_voice_sound": {
-            "source": "overlay/assets/drawable/icon_voice_sound.xml"
+            "source": "assets/drawable/icon_voice_sound.xml"
         },
         "ime_logo_green": {
-            "source": "overlay/assets/drawable/ime_logo_green.xml"
+            "source": "assets/drawable/ime_logo_green.xml"
         },
         "ime_logo_green_dark": {
-            "source": "overlay/assets/drawable/ime_logo_green_dark.xml"
+            "source": "assets/drawable/ime_logo_green_dark.xml"
         }
     }
 }

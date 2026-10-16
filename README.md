@@ -130,10 +130,20 @@ KernelSU 动态包还支持以下功能：
 | [config/theme.json](config/theme.json) | 颜色、字符串和 drawable 主题配置 |
 | [config/mappings/](config/mappings/) | 各版本的资源名称映射与上游信息 |
 | [config/latest.json](config/latest.json) | 发布版本与上游 APK 状态 |
-| [overlay/assets/drawable/](overlay/assets/drawable/) | drawable 源文件 |
+| [assets/drawable/](assets/drawable/) | drawable 源文件 |
 | [module_template/](module_template/) | 模块安装和启动脚本 |
 | [signing/LSPatch.bks](signing/LSPatch.bks) | 公开发布签名 |
-| `out/` | 构建产物和临时文件 |
+| `out/apk/` | 官方 APK 原包、解包目录和重打包中间文件 |
+| `out/overlay/` | 自动生成的 Overlay 清单、资源和 APK |
+| `out/module/` | 模块 ZIP 的组装目录 |
+| `out/internal/` | 构建元数据与临时签名文件 |
+| `out/` 根目录 | 发布用官方 APK、Monet APK 和模块 ZIP |
+
+官方 APK 下载到 `out/apk/official.apk`，解包到 `out/apk/decoded/`。脚本先解析资源映射，再替换解包目录中的主题资源并重打包为 Monet APK。
+
+Overlay 清单由构建脚本生成，和主题资源一起放入 `out/overlay/`。编译签名后，将 Overlay APK 复制到 `out/module/files/`，与模块模板一起打包。
+
+重新解包、生成 Overlay 和组装模块时，会分别重建对应工作目录，避免旧文件残留。`assets/drawable/` 中的源文件独立保留，发布文件名和模块 ZIP 内部结构保持一致。
 
 构建脚本按职责划分：
 
