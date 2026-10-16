@@ -104,18 +104,22 @@ multi_user_installation() {
 
 # 安装逻辑
 installation() {
+    unset MODULE_HOT_INSTALL_REQUEST
     if [ "$PACKAGE_TYPE" = "dynamic" ] && [ "$(get_conf_value "$CONFIG" "is_first_installation" "1")" = "0" ]; then
         # 动态模块安装逻辑
         echo "- 正在进行模块安装……"
         mkdir -p "$MODPATH/system/priv-app/WetypeMonet"
         cp -rf "$MODPATH/files/WetypeMonet.apk" "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"
-        if ! pm install -r "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"; then
-            echo "- [动态 Overlay 安装失败] 重启生效"
+        if pm install -r "$MODPATH/system/priv-app/WetypeMonet/WetypeMonet.apk"; then
+            am force-stop --user 0 com.tencent.wetype  2>/dev/null
+            export MODULE_HOT_INSTALL_REQUEST=true
+            echo "- [安装完成] 立即生效、无需重启"
+        else
+            # 保留启动重试状态。
+            set_conf_value "$CONFIG" "is_first_installation" "1"
+            echo "- [动态 Overlay 安装失败] 需要重启"
         fi
         rm -rf "$MODPATH/files"
-        am force-stop --user 0 com.tencent.wetype  2>/dev/null
-        export MODULE_HOT_INSTALL_REQUEST=true
-        echo "- [安装完成] 立即生效、无需重启"
     else
         echo "- 正在进行模块安装……"
         # 静态模块安装逻辑

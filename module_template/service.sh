@@ -38,24 +38,50 @@ set_conf_value() {
     fi
 }
 
-# 多用户首次安装
-if [ "$(get_conf_value "$CONFIG" "is_first_installation" "0")" = "1" ] && [ "$(get_conf_value "$CONFIG" "is_multi_user" "0")" = "1" ]; then
-    for i in $(ls /data/user/ | awk 'NR>1'); do
-        pm install-existing --user $i monet.com.tencent.wetype 2>/dev/null
-        am force-stop --user $i com.tencent.wetype  2>/dev/null
-    done
+first_installation=$(get_conf_value "$CONFIG" "is_first_installation" "0")
+multi_user=$(get_conf_value "$CONFIG" "is_multi_user" "0")
+package_type=$(get_conf_value "$CONFIG" "package_type" "static")
+initialization_ok=true
+user_ids="0"
+
+# 按安装选择确定用户范围。
+if [ "$multi_user" = "1" ]; then
+    if detected_users=$(ls /data/user/); then
+        for user_id in $detected_users; do
+            [ "$user_id" = "0" ] || user_ids="$user_ids $user_id"
+        done
+    else
+        initialization_ok=false
+        echo "- 读取用户列表失败"
+    fi
 fi
 
-# 启用 动态RRO
-if [ $(get_conf_value "$CONFIG" "package_type" "static") = "dynamic" ];then
-    user_id=$(ls /data/user/)
-    for i in $user_id; do
-        cmd overlay enable --user $i monet.com.tencent.wetype 2>/dev/null
-        am force-stop --user $i com.tencent.wetype  2>/dev/null
-    done
-fi
+for user_id in $user_ids; do
+    user_updated=false
+    if [ "$first_installation" = "1" ] && [ "$user_id" != "0" ]; then
+        if ! pm install-existing --user "$user_id" monet.com.tencent.wetype 2>/dev/null; then
+            initialization_ok=false
+            echo "- 用户 $user_id 安装 Overlay 失败"
+            continue
+        fi
+        user_updated=true
+    fi
 
-# 首次安装后，设置为非首次安装
-if [ "$(get_conf_value "$CONFIG" "is_first_installation" "0")" = "1" ];then
+    if [ "$package_type" = "dynamic" ]; then
+        if ! cmd overlay enable --user "$user_id" monet.com.tencent.wetype 2>/dev/null; then
+            initialization_ok=false
+            echo "- 用户 $user_id 启用 Overlay 失败"
+            continue
+        fi
+        user_updated=true
+    fi
+
+    if [ "$user_updated" = "true" ]; then
+        am force-stop --user "$user_id" com.tencent.wetype 2>/dev/null
+    fi
+done
+
+# 全部用户初始化成功后再清除重试状态。
+if [ "$first_installation" = "1" ] && [ "$initialization_ok" = "true" ]; then
     set_conf_value "$CONFIG" "is_first_installation" "0"
 fi
