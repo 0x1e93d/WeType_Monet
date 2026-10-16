@@ -9,7 +9,7 @@
   <a href="https://github.com/0x1e93d/WeType_Monet/releases/latest"><img src="https://img.shields.io/github/v/release/0x1e93d/WeType_Monet?style=flat-square&amp;label=Release" alt="最新发布"></a>
   <a href="https://github.com/0x1e93d/WeType_Monet/releases"><img src="https://img.shields.io/github/downloads/0x1e93d/WeType_Monet/total?style=flat-square&amp;label=Downloads" alt="累计下载量"></a>
   <img src="https://img.shields.io/badge/Overlay-Android%2014%2B-3DDC84?style=flat-square&amp;logo=android&amp;logoColor=white" alt="模块需要 Android 14 及以上">
-  <a href="LICENSE"><img src="https://img.shields.io/badge/License-GPL--3.0-blue?style=flat-square" alt="GPL-3.0 许可证"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-AGPL--3.0-blue?style=flat-square" alt="AGPL-3.0 许可证"></a>
 </p>
 
 <p>
@@ -178,4 +178,4 @@ python -B -m unittest discover -s tests -v
 
 ## 许可证
 
-项目代码采用 [GPL-3.0](LICENSE) 许可证。
+项目代码采用 [AGPL-3.0](LICENSE) 许可证。
