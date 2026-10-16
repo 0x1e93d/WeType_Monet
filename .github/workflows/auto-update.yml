@@ -34,8 +34,15 @@ jobs:
           python-version: "3.11"
       - name: Run Python tests
         run: python -m unittest discover -s tests -v
-      - name: Check build script syntax
-        run: python -B -c "from pathlib import Path; compile(Path('scripts/build.py').read_text(encoding='utf-8'), 'scripts/build.py', 'exec')"
+      - name: Check Python syntax
+        run: |
+          python -B - <<'PY'
+          from pathlib import Path
+
+          for directory in ("scripts", "tests"):
+              for script_path in sorted(Path(directory).rglob("*.py")):
+                  compile(script_path.read_text(encoding="utf-8"), str(script_path), "exec")
+          PY
       - name: Check shell script syntax
         shell: bash
         run: |

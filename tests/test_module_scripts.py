@@ -233,5 +233,15 @@ class ModuleScriptTests(unittest.TestCase):
         self.assertIn("am force-stop --user 10 com.tencent.wetype", self.commands())
 
 
+class ModuleTemplateTests(unittest.TestCase):
+    def test_customize_restores_old_config_before_reading_package_type(self):
+        script = (Path(__file__).resolve().parents[1] / "module_template" / "customize.sh").read_text(
+            encoding="utf-8"
+        )
+        main_body = script[script.index("main()") :]
+
+        self.assertLess(main_body.index("backup"), main_body.index("check_package_type"))
+
+
 if __name__ == "__main__":
     unittest.main()
