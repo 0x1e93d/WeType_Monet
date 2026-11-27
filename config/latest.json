@@ -3,14 +3,17 @@
     "module_version": 26,
     "base_sha256": "1676b70dd431ec8a2c9ca4a6089b00a25d9aa9c730010b39436dc76a61ebc69d",
     "upstream": {
-        "version_name": "4.0.1",
+        "version_name": "4.0.2",
         "version_code": "59201",
-        "sha256": "353063e3e80d447eed0da37b91a97ba563f58577c76f51b5b3bc578d3a3f1fdf",
+        "build": "1436",
+        "sha256": "220c3e9fd86fc4716743edc5f67e46c0f923c032ff9325540a988946dada9b02",
+        "download_url": "https://download.z.weixin.qq.com/app/android/4.0.2/wxkb_1436.apk",
         "release_date": "2026-11-11",
-        "config_file": "mappings/4.0.1(59201).json"
+        "config_file": "mappings/4.0.2.59201.1436.json"
     },
     "release": {
-        "tag": "v26",
-        "title": "微信输入法 4.0.1 · Monet v26"
+        "tag": "v27-beta.1436",
+        "title": "微信输入法 4.0.2 Beta · Monet v27",
+        "channel": "beta"
     }
 }
