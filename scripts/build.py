@@ -37,7 +37,7 @@ def main(paths: BuildPaths | None = None):
         if build_input is None:
             return
         sha256_str, apk_code, apk_name, release_date, changelog = build_input
-        version_changed = latest_state is None or release.should_build(apk_name, apk_code, latest_state)
+        version_changed = latest_state is None or release.should_build(apk_code, latest_state)
         include_official = version_changed or not git_changes
 
         print("\n[+] ===== 阶段 2: 关闭签名校验自毁逻辑（so 补丁） =====")

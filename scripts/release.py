@@ -105,29 +105,20 @@ def get_latest_sha256(paths: BuildPaths) -> tuple[str | None, str | None]:
     return upstream["config_file"], upstream["sha256"]
 
 
-def _version_name_key(value: str) -> tuple[int, ...]:
-    return tuple(int(part) for part in re.findall(r"\d+", value))
-
-
 def _version_code_key(value: str) -> int:
     return int(value) if value.isdigit() else 0
 
 
 def should_build(
-    version_name: str,
     version_code: str,
     latest_state: dict | None,
     *,
     force_build: bool = False,
 ) -> bool:
-    """版本名或版本号任一增大时构建。"""
+    """versionCode 增大时构建。"""
     if force_build or latest_state is None:
         return True
-    upstream = latest_state["upstream"]
-    return (
-        _version_name_key(version_name) > _version_name_key(upstream["version_name"])
-        or _version_code_key(version_code) > _version_code_key(upstream["version_code"])
-    )
+    return _version_code_key(version_code) > _version_code_key(latest_state["upstream"]["version_code"])
 
 
 def get_existing_module_versions() -> set[int]:

@@ -40,38 +40,28 @@ class ReleaseTests(BuildTestCase):
         )
         self.assertEqual(release.get_latest_sha256(self.paths), ("mappings/1.0(1).json", "a" * 64))
 
-    def test_should_skip_same_version(self):
-        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
+    def test_should_skip_when_version_code_unchanged(self):
+        state = self._write_latest_state(apk_name="4.0.1", apk_code="59201")
 
-        self.assertFalse(release.should_build("4.0.2", "59201", state))
-
-    def test_should_build_when_version_name_increases(self):
-        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
-
-        self.assertTrue(release.should_build("4.0.3", "59201", state))
+        self.assertFalse(release.should_build("59201", state))
 
     def test_should_build_when_version_code_increases(self):
+        state = self._write_latest_state(apk_name="4.0.1", apk_code="59201")
+
+        self.assertTrue(release.should_build("60201", state))
+
+    def test_should_skip_when_version_code_decreases(self):
         state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
 
-        self.assertTrue(release.should_build("4.0.2", "59202", state))
-
-    def test_should_build_when_only_one_version_increases(self):
-        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
-
-        self.assertTrue(release.should_build("4.0.3", "59200", state))
-
-    def test_should_skip_when_versions_decrease(self):
-        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
-
-        self.assertFalse(release.should_build("4.0.1", "59200", state))
+        self.assertFalse(release.should_build("58201", state))
 
     def test_should_build_without_previous_state(self):
-        self.assertTrue(release.should_build("4.0.2", "59201", None))
+        self.assertTrue(release.should_build("59201", None))
 
     def test_should_build_when_forced(self):
-        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
+        state = self._write_latest_state(apk_name="4.0.1", apk_code="59201")
 
-        self.assertTrue(release.should_build("4.0.2", "59201", state, force_build=True))
+        self.assertTrue(release.should_build("59201", state, force_build=True))
 
     def test_module_metadata_uses_latest_integer_version(self):
         self.paths.module_dir.mkdir(parents=True)

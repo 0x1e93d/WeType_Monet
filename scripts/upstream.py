@@ -210,7 +210,7 @@ def download_and_decompile_apk(
     print(f"[+] 当前版本: {version_name} ({version_code})")
 
     latest_state = release.get_latest_build_state(paths)
-    if not release.should_build(version_name, version_code, latest_state, force_build=force_build):
+    if not release.should_build(version_code, latest_state, force_build=force_build):
         previous = latest_state["upstream"]
         print(f"[=] 版本未提升（已发布 {previous['version_name']} ({previous['version_code']})），跳过构建。")
         return None
