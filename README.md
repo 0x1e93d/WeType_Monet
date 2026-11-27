@@ -111,7 +111,7 @@ KernelSU 动态包还支持以下功能：
 
 | 方式 | 触发与行为 |
 | :--- | :--- |
-| 自动更新 | 每天北京时间 06:17 检查官方 APK，SHA256 变化或缺少有效发布状态时构建发布。 |
+| 自动更新 | 每天北京时间 06:17 检查官方 APK，版本名或版本号提升，或缺少有效发布状态时构建发布。 |
 | 手动更新 | 运行 [Manual force update](https://github.com/0x1e93d/WeType_Monet/actions/workflows/manual-update.yml)，强制生成并发布新版本。 |
 | 测试构建 | 运行 [Test build](https://github.com/0x1e93d/WeType_Monet/actions/workflows/test-build.yml)，强制构建，产物保留一天，不发布。 |
 

@@ -38,33 +38,38 @@ class ReleaseTests(BuildTestCase):
         )
         self.assertEqual(release.get_latest_sha256(self.paths), ("mappings/1.0(1).json", "a" * 64))
 
-    def test_should_skip_unchanged_apk(self):
-        state = self._write_latest_state()
+    def test_should_skip_same_version(self):
+        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
 
-        self.assertFalse(release.should_build("a" * 64, state))
+        self.assertFalse(release.should_build("4.0.2", "59201", state))
 
-    def test_should_build_for_apk_changes(self):
-        state = self._write_latest_state()
+    def test_should_build_when_version_name_increases(self):
+        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
 
-        self.assertTrue(release.should_build("c" * 64, state))
+        self.assertTrue(release.should_build("4.0.3", "59201", state))
 
-    def test_should_ignore_recorded_base_hash(self):
-        state = self._write_latest_state(base_sha="d")
+    def test_should_build_when_version_code_increases(self):
+        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
 
-        self.assertFalse(release.should_build("a" * 64, state))
+        self.assertTrue(release.should_build("4.0.2", "59202", state))
+
+    def test_should_build_when_only_one_version_increases(self):
+        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
+
+        self.assertTrue(release.should_build("4.0.3", "59200", state))
+
+    def test_should_skip_when_versions_decrease(self):
+        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
+
+        self.assertFalse(release.should_build("4.0.1", "59200", state))
 
     def test_should_build_without_previous_state(self):
-        self.assertTrue(release.should_build("a" * 64, None))
+        self.assertTrue(release.should_build("4.0.2", "59201", None))
 
-    def test_should_ignore_apk_hash_case(self):
-        state = self._write_latest_state()
+    def test_should_build_when_forced(self):
+        state = self._write_latest_state(apk_name="4.0.2", apk_code="59201")
 
-        self.assertFalse(release.should_build("A" * 64, state))
-
-    def test_should_build_when_forced_even_without_input_changes(self):
-        state = self._write_latest_state()
-
-        self.assertTrue(release.should_build("a" * 64, state, force_build=True))
+        self.assertTrue(release.should_build("4.0.2", "59201", state, force_build=True))
 
     def test_module_metadata_uses_latest_integer_version(self):
         self.paths.module_dir.mkdir(parents=True)

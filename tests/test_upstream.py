@@ -1,28 +1,28 @@
-import hashlib
 import json
+import subprocess
 import unittest
 from contextlib import redirect_stdout
 from io import BytesIO, StringIO
+from pathlib import Path
 from unittest.mock import patch
 
-from scripts import resources, upstream
+from scripts import upstream
 from tests.build_fixtures import BuildTestCase
 
 
 class UpstreamTests(BuildTestCase):
-    def test_download_skips_unchanged_apk_after_theme_changes(self):
+    def test_download_skips_same_version(self):
         self._write_theme_config()
-        state = self._write_latest_state()
+        state = self._write_latest_state(apk_name="1.0", apk_code="1")
         apk_content = b"official-apk"
-        state["upstream"]["sha256"] = hashlib.sha256(apk_content).hexdigest()
         previous_state = json.dumps(state)
         self.paths.latest_config_path.write_text(previous_state, encoding="utf-8")
-        self.assertNotEqual(resources.get_theme_sha256(self.paths), state["base_sha256"])
 
         with (
             patch.object(upstream, "fetch_changelog_info", return_value=("1.0", "2026-01-01", [])),
             patch.object(upstream.urllib.request, "urlopen", return_value=BytesIO(apk_content)),
-            patch.object(upstream.subprocess, "run", side_effect=AssertionError("APK 未变化时不应调用解包工具")),
+            patch.object(upstream, "read_apk_version", return_value=("1.0", "1")),
+            patch.object(upstream.subprocess, "run", side_effect=AssertionError("版本未提升时不应解包")),
             redirect_stdout(StringIO()),
         ):
             result = upstream.download_and_decompile_apk(self.paths)
@@ -30,6 +30,22 @@ class UpstreamTests(BuildTestCase):
         self.assertIsNone(result)
         self.assertEqual(self.paths.download_apk_path.read_bytes(), apk_content)
         self.assertEqual(self.paths.latest_config_path.read_text(encoding="utf-8"), previous_state)
+
+    def test_read_apk_version_parses_aapt2_output(self):
+        stdout = (
+            "package: name='com.tencent.wetype' versionCode='59201' "
+            "versionName='4.0.2' compileSdkVersion='36'\n"
+        )
+
+        with (
+            patch("scripts.packaging.find_aapt2", return_value="aapt2"),
+            patch.object(
+                upstream.subprocess,
+                "run",
+                return_value=subprocess.CompletedProcess([], 0, stdout=stdout, stderr=""),
+            ),
+        ):
+            self.assertEqual(upstream.read_apk_version(Path("base.apk")), ("4.0.2", "59201"))
 
     def test_parses_official_changelog_content(self):
         html = """

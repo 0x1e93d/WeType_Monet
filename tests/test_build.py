@@ -87,6 +87,13 @@ class BuildPipelineTests(BuildTestCase):
         elif tool_name == "keytool":
             Path(command[command.index("-destkeystore") + 1]).write_bytes(b"temporary-keystore")
         elif tool_name == "aapt2":
+            if command[1] == "dump":
+                return subprocess.CompletedProcess(
+                    command,
+                    0,
+                    stdout="package: name='com.tencent.wetype' versionCode='1' versionName='1.0'\n",
+                    stderr="",
+                )
             if command[1] == "link" and self.fail_link:
                 return subprocess.CompletedProcess(command, 1, stdout="", stderr="link failed")
             Path(command[command.index("-o") + 1]).write_bytes(b"overlay-apk")

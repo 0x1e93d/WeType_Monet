@@ -84,6 +84,33 @@ def find_sdk_tools() -> tuple[str, str, str, str]:
     return aapt2, zipalign, apksigner, android_jar
 
 
+def find_aapt2() -> str:
+    """定位 aapt2，用于读取 APK 版本信息。"""
+    configured = os.environ.get("AAPT2_PATH")
+    if configured and Path(configured).is_file():
+        return configured
+
+    sdk_root = os.environ.get("ANDROID_HOME") or os.environ.get("ANDROID_SDK_ROOT")
+    if not sdk_root and os.name == "nt":
+        local_appdata = os.environ.get("LOCALAPPDATA", "")
+        if local_appdata:
+            sdk_root = os.path.join(local_appdata, "Android", "Sdk")
+
+    if sdk_root:
+        build_tools = Path(sdk_root) / "build-tools"
+        if build_tools.is_dir():
+            for version_dir in sorted(build_tools.iterdir(), reverse=True):
+                for name in ("aapt2.exe", "aapt2") if os.name == "nt" else ("aapt2",):
+                    candidate = version_dir / name
+                    if candidate.is_file():
+                        return str(candidate)
+
+    located = shutil.which("aapt2")
+    if located:
+        return located
+    raise RuntimeError("未找到 aapt2！请确认已安装 Android SDK 或配置 AAPT2_PATH 环境变量。")
+
+
 def find_keytool() -> str:
     configured = os.environ.get("KEYTOOL_PATH")
     if configured and Path(configured).is_file():

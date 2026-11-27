@@ -26,6 +26,27 @@ def calculate_sha256(file_path: Path) -> str:
     return sha256.hexdigest()
 
 
+def read_apk_version(apk_path: Path) -> tuple[str, str]:
+    """读取 APK 的 versionName 与 versionCode。"""
+    from scripts import packaging
+
+    aapt2 = packaging.find_aapt2()
+    result = subprocess.run(
+        [aapt2, "dump", "badging", str(apk_path)],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="ignore",
+    )
+    if result.returncode != 0:
+        raise RuntimeError(f"aapt2 读取版本失败:\n{result.stderr or result.stdout}")
+    version_name = re.search(r"versionName='([^']*)'", result.stdout)
+    version_code = re.search(r"versionCode='([^']*)'", result.stdout)
+    if not version_name or not version_code:
+        raise RuntimeError("aapt2 输出中缺少 versionName/versionCode")
+    return version_name.group(1), version_code.group(1)
+
+
 class OfficialChangelogParser(HTMLParser):
     """解析官方更新日志中的版本、日期和条目。"""
 
@@ -182,10 +203,13 @@ def download_and_decompile_apk(
     new_sha256 = calculate_sha256(paths.download_apk_path)
     print(f"[+] 下载完成，当前 APK SHA256: {new_sha256}")
 
+    version_name, version_code = read_apk_version(paths.download_apk_path)
+    print(f"[+] 当前版本: {version_name} ({version_code})")
+
     latest_state = release.get_latest_build_state(paths)
-    # 主题资源变更通过手动更新发布。
-    if not release.should_build(new_sha256, latest_state, force_build=force_build):
-        print("[=] 官方 APK 未更新，跳过构建。")
+    if not release.should_build(version_name, version_code, latest_state, force_build=force_build):
+        previous = latest_state["upstream"]
+        print(f"[=] 版本未提升（已发布 {previous['version_name']} ({previous['version_code']})），跳过构建。")
         return None
 
     print(f"[*] 开始使用 Apktool 解包 APK -> {paths.decompile_dir}")
