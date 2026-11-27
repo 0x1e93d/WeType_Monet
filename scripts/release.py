@@ -16,7 +16,9 @@ MODULE_AUTHOR = "酷安@1e93d"
 MODULE_DESCRIPTION = "为微信输入法提供 Monet 动态色彩主题。"
 REPOSITORY_SLUG = os.environ.get("GITHUB_REPOSITORY", "0x1e93d/WeType_Monet")
 UPDATE_JSON_URL = f"https://raw.githubusercontent.com/{REPOSITORY_SLUG}/main/wetype_monet.json"
+BETA_UPDATE_JSON_URL = f"https://raw.githubusercontent.com/{REPOSITORY_SLUG}/main/wetype_monet_beta.json"
 KSU_CHANGELOG_URL = f"https://raw.githubusercontent.com/{REPOSITORY_SLUG}/main/CHANGELOG.md"
+BETA_CHANGELOG_URL = f"https://raw.githubusercontent.com/{REPOSITORY_SLUG}/main/CHANGELOG_BETA.md"
 
 
 def format_module_version(module_version: int) -> str:
@@ -25,24 +27,55 @@ def format_module_version(module_version: int) -> str:
     return f"v{module_version}"
 
 
-def get_module_zip_filename(module_version: int) -> str:
-    return f"{MODULE_ID}_{format_module_version(module_version)}.zip"
+def compose_version_code(module_version: int, build: str) -> int:
+    """v 与 build 共同决定版本代码，两者任一变化都能触发更新。"""
+    build_number = int(build) if str(build).isdigit() else 0
+    return module_version * 100000 + build_number
 
 
-def get_official_apk_filename(apk_name: str, apk_code: str) -> str:
-    safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
-    safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
-    return f"Wetype_{safe_name}({safe_code}).apk"
+def get_version_label(module_version: int, build: str, beta: bool) -> str:
+    if beta:
+        return f"{format_module_version(module_version)}-beta.{build}"
+    return format_module_version(module_version)
 
 
-def get_monet_apk_filename(apk_name: str, apk_code: str, module_version: int) -> str:
-    safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
-    safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
-    return f"Wetype_Monet_{safe_name}({safe_code})_{format_module_version(module_version)}.apk"
+def get_release_tag(module_version: int, build: str, beta: bool) -> str:
+    return get_version_label(module_version, build, beta)
 
 
-def get_release_title(apk_name: str, module_version: int) -> str:
-    return f"微信输入法 {apk_name} · Monet {format_module_version(module_version)}"
+def get_update_json_url(beta: bool) -> str:
+    return BETA_UPDATE_JSON_URL if beta else UPDATE_JSON_URL
+
+
+def get_changelog_url(beta: bool) -> str:
+    return BETA_CHANGELOG_URL if beta else KSU_CHANGELOG_URL
+
+
+def _safe(value: str) -> str:
+    return re.sub(r'[\\/:*?"<>|\s]', "_", value)
+
+
+def get_module_zip_filename(apk_name: str, apk_code: str, build: str, module_version: int) -> str:
+    return (
+        f"{MODULE_ID}_{_safe(apk_name)}.{_safe(apk_code)}.{_safe(build)}"
+        f"_{format_module_version(module_version)}.zip"
+    )
+
+
+def get_official_apk_filename(apk_name: str, apk_code: str, build: str) -> str:
+    return f"Wetype_{_safe(apk_name)}.{_safe(apk_code)}.{_safe(build)}.apk"
+
+
+def get_monet_apk_filename(apk_name: str, apk_code: str, build: str, module_version: int) -> str:
+    return (
+        f"Wetype_Monet_{_safe(apk_name)}.{_safe(apk_code)}.{_safe(build)}"
+        f"_{format_module_version(module_version)}.apk"
+    )
+
+
+def get_release_title(apk_name: str, module_version: int, beta: bool = False) -> str:
+    suffix = " Beta" if beta else ""
+    return f"微信输入法 {apk_name}{suffix} · Monet {format_module_version(module_version)}"
 
 
 def china_timezone():
@@ -105,20 +138,20 @@ def get_latest_sha256(paths: BuildPaths) -> tuple[str | None, str | None]:
     return upstream["config_file"], upstream["sha256"]
 
 
-def _version_code_key(value: str) -> int:
-    return int(value) if value.isdigit() else 0
+def _build_key(value: str) -> int:
+    return int(value) if str(value).isdigit() else 0
 
 
 def should_build(
-    version_code: str,
+    build: str,
     latest_state: dict | None,
     *,
     force_build: bool = False,
 ) -> bool:
-    """versionCode 增大时构建。"""
+    """出现新的 build 号时构建。"""
     if force_build or latest_state is None:
         return True
-    return _version_code_key(version_code) > _version_code_key(latest_state["upstream"]["version_code"])
+    return _build_key(build) > _build_key(latest_state["upstream"].get("build", ""))
 
 
 def get_existing_module_versions() -> set[int]:
@@ -157,13 +190,19 @@ def write_latest_config(
     module_version: int,
     base_sha256: str,
     sha256_str: str,
-    apk_code: str,
     apk_name: str,
+    apk_code: str,
+    build: str,
+    download_url: str,
     release_date: str,
     config_path: Path,
+    beta: bool = False,
+    release_tag: str | None = None,
+    next_module_version: int | None = None,
 ):
     """原子写入最后一次成功发布的模块状态。"""
     config_relative_path = config_path.relative_to(paths.config_dir).as_posix()
+    release_version = next_module_version or module_version
     latest_config = {
         "state_version": 1,
         "module_version": module_version,
@@ -172,13 +211,16 @@ def write_latest_config(
         "upstream": {
             "version_name": apk_name,
             "version_code": apk_code,
+            "build": build,
             "sha256": sha256_str,
+            "download_url": download_url,
             "release_date": release_date,
             "config_file": config_relative_path,
         },
         "release": {
-            "tag": format_module_version(module_version),
-            "title": get_release_title(apk_name, module_version),
+            "tag": release_tag or format_module_version(module_version),
+            "title": get_release_title(apk_name, release_version, beta),
+            "channel": "beta" if beta else "official",
         },
     }
     temp_path = paths.latest_config_path.with_name(f"{paths.latest_config_path.name}.tmp")
@@ -228,6 +270,7 @@ def write_update_changelog(
     module_version: int,
     apk_name: str,
     apk_code: str,
+    build: str,
     changelog: list[str],
     changes: list[str] | None = None,
     *,
@@ -236,7 +279,7 @@ def write_update_changelog(
     """写入 KernelSU 更新日志（精简版）。"""
     version = format_module_version(module_version)
     entries = _official_entries(changelog)
-    lines = [f"## {version} · 微信输入法 {apk_name} ({apk_code})", "", "### 更新内容"]
+    lines = [f"## {version} · 微信输入法 {apk_name}.{apk_code}.{build}", "", "### 更新内容"]
     if include_official:
         if entries:
             lines.append("- 官方更新：")
@@ -250,11 +293,35 @@ def write_update_changelog(
     _write_text(paths.ksu_changelog_path, "\n".join(lines))
 
 
+def write_beta_changelog(
+    paths: BuildPaths,
+    module_version: int,
+    apk_name: str,
+    apk_code: str,
+    build: str,
+    changes: list[str] | None = None,
+):
+    """写入测试版更新日志。"""
+    label = get_version_label(module_version, build, True)
+    lines = [f"## {label} · 微信输入法 {apk_name}.{apk_code}.{build}", "", "### 更新内容"]
+    if changes:
+        lines.append("- 本次调整：")
+        lines.extend(f"  - {change}" for change in changes)
+    else:
+        lines.append("- 跟随官方测试构建。")
+    lines.extend(
+        ["", "### 安装", "- 测试版模块，刷入后重启；正式版发布后可自动收到正式版更新。", ""]
+    )
+    _write_text(paths.beta_changelog_path, "\n".join(lines))
+
+
 def write_release_notes(
     paths: BuildPaths,
     module_version: int,
     apk_name: str,
     apk_code: str,
+    build: str,
+    download_url: str,
     apk_sha256: str,
     changelog: list[str],
     config_path: Path,
@@ -264,32 +331,44 @@ def write_release_notes(
     changes: list[str] | None = None,
     *,
     include_official: bool = True,
+    beta: bool = False,
+    version_label: str | None = None,
+    version_code_value: int | None = None,
 ):
     """写入 GitHub Release 说明（完整版）。"""
     version = format_module_version(module_version)
+    display_label = version_label or version
+    display_code = version_code_value if version_code_value is not None else module_version
     entries = _official_entries(changelog)
     config_relative_path = config_path.relative_to(paths.config_dir).as_posix()
-    lines = [
-        f"## 微信输入法 Monet {version}",
-        "",
-        f"适配微信输入法 **{apk_name} ({apk_code})**。",
-        "",
-        "### 更新内容",
-    ]
+    title_suffix = " Beta" if beta else ""
+    lines = [f"## 微信输入法 Monet {version}{title_suffix}", ""]
+    if beta:
+        lines.extend(["> 测试版本，仅供体验，可能不稳定；稳定版请使用最新正式版。", ""])
+    lines.extend(
+        [
+            f"适配微信输入法 **{apk_name}.{apk_code}.{build}**{'（Beta）' if beta else ''}。",
+            "",
+            "### 更新内容",
+        ]
+    )
     if include_official:
         if entries:
             lines.append("- 官方更新：")
             lines.extend(f"  - {entry}" for entry in entries)
         else:
             lines.append("- 官方更新：官方未提供该版本更新日志。")
+    elif beta:
+        lines.append("- 官方：该版本尚未发布正式版，无官方更新日志。")
     if changes:
         lines.append("- 本次调整：")
         lines.extend(f"  - {change}" for change in changes)
+    install_suffix = "（预发布，不进入在线更新）" if beta else ""
     lines.extend(
         [
             "",
             "### 安装",
-            f"- Magisk / KernelSU：刷入 `{zip_path.name}` 后重启；动态模块支持热更新。",
+            f"- Magisk / KernelSU：刷入 `{zip_path.name}` 后重启；动态模块支持热更新。{install_suffix}",
             f"- 独立 APK：`{monet_apk_path.name}`；首次从官方版切换需备份数据并卸载（签名不同）。",
             "",
             "### 文件说明",
@@ -302,8 +381,9 @@ def write_release_notes(
             "<details>",
             "<summary>构建信息</summary>",
             "",
-            f"- 模块版本：{version}（版本代码 {module_version}）",
+            f"- 模块版本：{display_label}（版本代码 {display_code}）",
             f"- 构建时间：{current_build_time()}",
+            f"- 官方 APK 下载：{download_url}",
             f"- 官方 APK SHA256：`{apk_sha256}`",
             f"- 资源映射：`config/{config_relative_path}`",
             "</details>",
@@ -313,38 +393,60 @@ def write_release_notes(
     _write_text(paths.release_notes_path, "\n".join(lines))
 
 
-def write_update_json(paths: BuildPaths, module_version: int):
-    """写入在线更新清单。"""
-    version = format_module_version(module_version)
+def write_update_json(
+    paths: BuildPaths,
+    module_version: int,
+    apk_name: str,
+    apk_code: str,
+    build: str,
+    *,
+    beta: bool = False,
+    release_tag: str | None = None,
+    target_beta: bool | None = None,
+):
+    """写入在线更新清单；正式版发布时同时把测试通道指向正式版。"""
+    version = get_version_label(module_version, build, beta)
+    tag = release_tag or version
+    zip_name = get_module_zip_filename(apk_name, apk_code, build, module_version)
     payload = {
-        "versionCode": module_version,
+        "versionCode": compose_version_code(module_version, build),
         "version": version,
-        "zipUrl": f"https://github.com/{REPOSITORY_SLUG}/releases/download/{version}/{get_module_zip_filename(module_version)}",
-        "changelog": KSU_CHANGELOG_URL,
+        "zipUrl": f"https://github.com/{REPOSITORY_SLUG}/releases/download/{tag}/{zip_name}",
+        "changelog": get_changelog_url(beta),
     }
-    temp_path = paths.update_json_path.with_name(f"{paths.update_json_path.name}.tmp")
+    target_path = (
+        paths.beta_update_json_path if (beta if target_beta is None else target_beta) else paths.update_json_path
+    )
+    temp_path = target_path.with_name(f"{target_path.name}.tmp")
     temp_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    temp_path.replace(paths.update_json_path)
+    temp_path.replace(target_path)
 
 
-def generate_module_prop(paths: BuildPaths, module_version: int) -> tuple[str, str]:
+def generate_module_prop(
+    paths: BuildPaths,
+    module_version: int,
+    *,
+    version_label: str | None = None,
+    version_code: int | None = None,
+    update_json_url: str | None = None,
+) -> tuple[str, str]:
     """生成模块属性清单 module.prop。"""
-    version_name = format_module_version(module_version)
-    version_code = str(module_version)
+    version_name = version_label or format_module_version(module_version)
+    code = version_code if version_code is not None else module_version
     description = MODULE_DESCRIPTION
 
     lines = [
         f"id={MODULE_ID}",
         f"name={MODULE_NAME}",
         f"version={version_name}",
-        f"versionCode={version_code}",
+        f"versionCode={code}",
         f"author={MODULE_AUTHOR}",
         f"description={description}",
-        f"updateJson={UPDATE_JSON_URL}",
+        f"updateJson={update_json_url or UPDATE_JSON_URL}",
     ]
     (paths.module_dir / "module.prop").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"[+] module.prop 生成完成 (Version: {version_name}, Code: {version_code})")
-    return version_name, version_code
+    print(f"[+] module.prop 生成完成 (Version: {version_name}, Code: {code})")
+    return version_name, str(code)
 
 
 def write_build_metadata(
@@ -353,22 +455,36 @@ def write_build_metadata(
     version_code: str,
     apk_name: str,
     apk_code: str,
+    build: str,
+    download_url: str,
+    prerelease: bool,
     config_path: Path,
     zip_path: Path,
     official_apk_path: Path,
     monet_apk_path: Path,
+    *,
+    release_tag: str | None = None,
+    release_version: int | None = None,
 ):
+    match = re.match(r"v(\d+)", module_version)
+    fallback_version = int(match.group(1)) if match else 0
     metadata = {
         "module_version": module_version,
         "version_code": version_code,
         "apk_name": apk_name,
         "apk_code": apk_code,
+        "upstream_build": build,
+        "download_url": download_url,
+        "prerelease": "true" if prerelease else "false",
+        "channel": "beta" if prerelease else "official",
         "config_file": config_path.relative_to(paths.config_dir).as_posix(),
         "zip_file": zip_path.name,
         "official_apk_file": official_apk_path.name,
         "monet_apk_file": monet_apk_path.name,
-        "release_tag": module_version,
-        "release_title": get_release_title(apk_name, int(version_code)),
+        "release_tag": release_tag or module_version,
+        "release_title": get_release_title(
+            apk_name, release_version or fallback_version, prerelease
+        ),
         "build_time": current_build_time(),
     }
     paths.build_metadata_path.parent.mkdir(parents=True, exist_ok=True)

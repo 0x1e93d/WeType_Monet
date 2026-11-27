@@ -18,6 +18,15 @@ from tests.build_fixtures import BuildTestCase
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
 
+class FakeResponse(BytesIO):
+    def __init__(self, content, url):
+        super().__init__(content)
+        self._url = url
+
+    def geturl(self):
+        return self._url
+
+
 class BuildPipelineTests(BuildTestCase):
     def setUp(self):
         super().setUp()
@@ -47,7 +56,7 @@ class BuildPipelineTests(BuildTestCase):
 
         toolchain_dir = self.root / "toolchain"
         toolchain_dir.mkdir()
-        self.build_environment = {"FORCE_BUILD": "true"}
+        self.build_environment = {"FORCE_VERSION": "true"}
         for variable, filename in {
             "AAPT2_PATH": "aapt2",
             "ZIPALIGN_PATH": "zipalign",
@@ -63,7 +72,10 @@ class BuildPipelineTests(BuildTestCase):
 
     def open_upstream_url(self, request, **options):
         if request.full_url == upstream.APK_URL:
-            return BytesIO(self.apk_content)
+            return FakeResponse(
+                self.apk_content,
+                "https://download.z.weixin.qq.com/app/android/1.0/wxkb_100.apk",
+            )
         if request.full_url == upstream.CHANGELOG_URL:
             return BytesIO(
                 '<div>发布版本:<span>1.0</span></div>'
@@ -134,14 +146,17 @@ class BuildPipelineTests(BuildTestCase):
 
         metadata = json.loads(self.paths.build_metadata_path.read_text(encoding="utf-8"))
         self.assertEqual(metadata["module_version"], "v3")
-        self.assertEqual(metadata["config_file"], "mappings/1.0(1).json")
-        self.assertEqual(metadata["zip_file"], "Wetype_Monet_v3.zip")
-        self.assertEqual(metadata["official_apk_file"], "Wetype_1.0(1).apk")
-        self.assertEqual(metadata["monet_apk_file"], "Wetype_Monet_1.0(1)_v3.apk")
+        self.assertEqual(metadata["config_file"], "mappings/1.0.1.100.json")
+        self.assertEqual(metadata["zip_file"], "Wetype_Monet_1.0.1.100_v3.zip")
+        self.assertEqual(metadata["official_apk_file"], "Wetype_1.0.1.100.apk")
+        self.assertEqual(metadata["monet_apk_file"], "Wetype_Monet_1.0.1.100_v3.apk")
+        self.assertEqual(metadata["upstream_build"], "100")
+        self.assertEqual(metadata["prerelease"], "false")
         self.assertEqual((self.paths.out_dir / metadata["official_apk_file"]).read_bytes(), self.apk_content)
         with zipfile.ZipFile(self.paths.out_dir / metadata["zip_file"]) as archive:
             self.assertEqual(archive.read("files/WetypeMonet.apk"), b"overlay-apk")
             self.assertIn("version=v3", archive.read("module.prop").decode("utf-8"))
+            self.assertIn("versionCode=300100", archive.read("module.prop").decode("utf-8"))
             self.assertIn("service.sh", archive.namelist())
         with zipfile.ZipFile(self.paths.out_dir / metadata["monet_apk_file"]) as archive:
             self.assertIn("#123456", archive.read("res/values/colors.xml").decode("utf-8"))
@@ -155,7 +170,7 @@ class BuildPipelineTests(BuildTestCase):
         self.assertFalse(self.paths.signing_keystore_path.exists())
 
     def test_unchanged_upstream_skips_artifacts_and_release_state(self):
-        self.run_build(FORCE_BUILD="false")
+        self.run_build(FORCE_VERSION="false")
 
         self.assertEqual(self.paths.latest_config_path.read_text(encoding="utf-8"), self.previous_state)
         self.assertFalse(self.paths.build_metadata_path.exists())

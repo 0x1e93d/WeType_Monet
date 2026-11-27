@@ -194,6 +194,7 @@ def build_monet_apk(
     config_file: Path,
     apk_name: str,
     apk_code: str,
+    build: str,
     module_version: int,
     signing_keystore: Path,
 ) -> Path:
@@ -203,7 +204,7 @@ def build_monet_apk(
     resources.apply_monet_resources(paths, config_file)
     unsigned_apk = paths.apk_dir / "unsigned.apk"
     aligned_apk = paths.apk_dir / "aligned.apk"
-    final_apk = paths.out_dir / release.get_monet_apk_filename(apk_name, apk_code, module_version)
+    final_apk = paths.out_dir / release.get_monet_apk_filename(apk_name, apk_code, build, module_version)
     for path in (unsigned_apk, aligned_apk, final_apk, Path(f"{final_apk}.idsig")):
         if path.exists():
             path.unlink()
@@ -315,10 +316,10 @@ def prepare_template(paths: BuildPaths):
         shutil.copytree(paths.template_dir, paths.module_dir, dirs_exist_ok=True)
 
 
-def create_module_zip(paths: BuildPaths, module_version: int) -> Path:
+def create_module_zip(paths: BuildPaths, apk_name: str, apk_code: str, build: str, module_version: int) -> Path:
     """打包输出 Magisk/KernelSU 模块 ZIP。"""
     print("[*] 打包 Magisk/KernelSU 刷机 ZIP 包...")
-    zip_path = paths.out_dir / release.get_module_zip_filename(module_version)
+    zip_path = paths.out_dir / release.get_module_zip_filename(apk_name, apk_code, build, module_version)
 
     if zip_path.exists():
         zip_path.unlink()
@@ -333,12 +334,12 @@ def create_module_zip(paths: BuildPaths, module_version: int) -> Path:
     return zip_path
 
 
-def archive_official_apk(paths: BuildPaths, apk_name: str, apk_code: str) -> Path:
+def archive_official_apk(paths: BuildPaths, apk_name: str, apk_code: str, build: str) -> Path:
     """将本次成功适配的官方 APK 复制为可发布的归档产物。"""
     if not paths.download_apk_path.is_file():
         raise FileNotFoundError(f"官方 APK 不存在，无法归档: {paths.download_apk_path}")
 
-    archive_path = paths.out_dir / release.get_official_apk_filename(apk_name, apk_code)
+    archive_path = paths.out_dir / release.get_official_apk_filename(apk_name, apk_code, build)
     shutil.copy2(paths.download_apk_path, archive_path)
     print(f"[+] 官方 APK 已归档: {archive_path}")
     return archive_path

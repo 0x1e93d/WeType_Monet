@@ -192,7 +192,7 @@ def download_and_decompile_apk(
     *,
     force_build: bool = False,
     apk_url: str | None = None,
-) -> tuple[str, str, str, str, list[str]] | None:
+) -> tuple[str, str, str, str, list[str], str, str] | None:
     """下载并解包 APK"""
     web_version, release_date, changelog = fetch_changelog_info()
 
@@ -201,18 +201,24 @@ def download_and_decompile_apk(
     paths.download_apk_path.parent.mkdir(parents=True, exist_ok=True)
     req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'})
     with urllib.request.urlopen(req) as resp, open(paths.download_apk_path, 'wb') as out_file:
+        final_url = resp.geturl() if hasattr(resp, "geturl") else download_url
         shutil.copyfileobj(resp, out_file)
 
     new_sha256 = calculate_sha256(paths.download_apk_path)
     print(f"[+] 下载完成，当前 APK SHA256: {new_sha256}")
 
+    build_match = re.search(r"wxkb_(\d+)(?:_32)?\.apk", final_url)
+    build = build_match.group(1) if build_match else ""
+    print(f"[+] 安装包地址: {final_url}")
+    print(f"[+] 构建号: {build or '未知'}")
+
     version_name, version_code = read_apk_version(paths.download_apk_path)
     print(f"[+] 当前版本: {version_name} ({version_code})")
 
     latest_state = release.get_latest_build_state(paths)
-    if not release.should_build(version_code, latest_state, force_build=force_build):
+    if not release.should_build(build, latest_state, force_build=force_build):
         previous = latest_state["upstream"]
-        print(f"[=] 版本未提升（已发布 {previous['version_name']} ({previous['version_code']})），跳过构建。")
+        print(f"[=] 构建号未变化（已发布 {previous['version_name']} ({previous['version_code']}.{previous.get('build', '?')})），跳过构建。")
         return None
 
     print(f"[*] 开始使用 Apktool 解包 APK -> {paths.decompile_dir}")
@@ -240,4 +246,4 @@ def download_and_decompile_apk(
     final_apk_name = apk_name or web_version or "unknown_version"
     final_changelog = changelog if (not web_version or web_version == final_apk_name) else []
 
-    return new_sha256, apk_code, final_apk_name, release_date, final_changelog
+    return new_sha256, apk_code, final_apk_name, release_date, final_changelog, build, final_url

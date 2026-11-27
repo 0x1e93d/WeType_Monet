@@ -1,13 +1,8 @@
-name: Manual force update
+name: Test build
 
 on:
   workflow_dispatch:
     inputs:
-      confirm:
-        description: "强制生成新的模块版本"
-        required: true
-        type: boolean
-        default: true
       apk_url:
         description: "官方 APK 直链（可选，留空使用默认下载地址）"
         required: false
@@ -18,10 +13,9 @@ permissions:
   contents: write
 
 jobs:
-  release:
-    if: inputs.confirm == true
-    uses: ./.github/workflows/auto-update.yml
+  build:
+    uses: ./.github/workflows/release.yml
     with:
-      force_build: true
+      dry_run: true
       apk_url: ${{ inputs.apk_url }}
     secrets: inherit

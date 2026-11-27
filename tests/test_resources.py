@@ -14,7 +14,7 @@ class ResourcesTests(BuildTestCase):
         self._write_theme_config()
         output = StringIO()
         with redirect_stdout(output):
-            config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+            config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
             resources.sync_src_resources(self.paths, config_path)
 
         payload = json.loads(config_path.read_text(encoding="utf-8"))
@@ -32,11 +32,11 @@ class ResourcesTests(BuildTestCase):
     def test_fails_for_unmapped_drawable(self):
         self._write_theme_config(drawables={"missing_drawable": {"source": "assets/drawable/source.xml"}})
         with self.assertRaisesRegex(RuntimeError, "missing_drawable"):
-            resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+            resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
 
     def test_regeneration_removes_deleted_drawable(self):
         theme = self._write_theme_config()
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
         resources.sync_src_resources(self.paths, config_path)
         drawable_path = self.paths.overlay_dir / "res/drawable/c.xml"
         self.assertTrue(drawable_path.is_file())
@@ -49,7 +49,7 @@ class ResourcesTests(BuildTestCase):
 
     def test_regeneration_removes_old_drawable_mapping(self):
         self._write_theme_config()
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
         resources.sync_src_resources(self.paths, config_path)
         mapping = json.loads(config_path.read_text(encoding="utf-8"))
         mapping["drawables"]["drawable_key"] = "renamed"
@@ -62,7 +62,7 @@ class ResourcesTests(BuildTestCase):
 
     def test_regeneration_rebuilds_overlay_workspace(self):
         self._write_theme_config()
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
         resources.sync_src_resources(self.paths, config_path)
         stale_file = self.paths.overlay_dir / "compiled.zip"
         stale_file.write_bytes(b"previous-build")
@@ -75,7 +75,7 @@ class ResourcesTests(BuildTestCase):
         theme = self._write_theme_config()
         source_path = self.root / theme["drawables"]["drawable_key"]["source"]
         source_content = source_path.read_bytes()
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
 
         resources.sync_src_resources(self.paths, config_path)
 
@@ -98,6 +98,8 @@ class ResourcesTests(BuildTestCase):
             "a" * 64,
             "55201",
             "3.5.2",
+            "1422",
+            "https://example.com/wxkb_1422.apk",
             "2026-07-22",
             ["跨设备功能支持自定义设备名称", "体验优化与问题修复"],
         )
@@ -138,7 +140,7 @@ class ResourcesTests(BuildTestCase):
 
     def test_fails_for_missing_drawable_source(self):
         self._write_theme_config(drawables={"drawable_key": {"source": "assets/drawable/missing.xml"}})
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
         with self.assertRaisesRegex(FileNotFoundError, "源文件不存在"):
             resources.sync_src_resources(self.paths, config_path)
 
@@ -166,7 +168,7 @@ class ResourcesTests(BuildTestCase):
                 f'.field public static final shared:I = {resource_id}', encoding="utf-8"
             )
 
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
 
         mapping = json.loads(config_path.read_text(encoding="utf-8"))
         self.assertEqual(mapping.get("colors"), {"shared": "a"})
@@ -174,7 +176,7 @@ class ResourcesTests(BuildTestCase):
 
     def test_theme_changes_reuse_mapping_without_rewriting_it(self):
         theme = self._write_theme_config()
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
         mapping_bytes = config_path.read_bytes()
         theme["colors"]["color_key"]["default"] = "#abcdef"
         theme["colors"]["color_key"]["note"] = "说明不参与资源生成"
@@ -193,7 +195,7 @@ class ResourcesTests(BuildTestCase):
             "ime_skin_dark_keyboard_background": {"default": "@android:color/system_surface_container_dark"}
         }
         self.paths.theme_config_path.write_text(json.dumps(theme), encoding="utf-8")
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
 
         resources.sync_src_resources(self.paths, config_path)
 
@@ -210,7 +212,7 @@ class ResourcesTests(BuildTestCase):
         theme["colors"] = {}
         theme["strings"] = {"string_key": {"value": "", "description": "清空文本"}}
         self.paths.theme_config_path.write_text(json.dumps(theme), encoding="utf-8")
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
 
         resources.apply_monet_resources(self.paths, config_path)
 
@@ -222,7 +224,7 @@ class ResourcesTests(BuildTestCase):
         theme["colors"] = {}
         theme["strings"] = {"string_key": {"description": "保留原文", "note": "没有设置 value"}}
         self.paths.theme_config_path.write_text(json.dumps(theme), encoding="utf-8")
-        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+        config_path = resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
 
         resources.apply_monet_resources(self.paths, config_path)
         resources.sync_src_resources(self.paths, config_path)
@@ -236,7 +238,7 @@ class ResourcesTests(BuildTestCase):
         self._write_theme_config(drawables={"drawable_key": {"description": "缺少源文件"}})
 
         with self.assertRaisesRegex(ValueError, "source"):
-            resources.generate_version_config(self.paths, "hash", "1", "1.0", "2026-01-01", [])
+            resources.generate_version_config(self.paths, "hash", "1", "1.0", "100", "https://example.com/wxkb_100.apk", "2026-01-01", [])
 
 
 if __name__ == "__main__":
