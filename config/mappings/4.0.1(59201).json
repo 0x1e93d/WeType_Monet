@@ -2,9 +2,11 @@
     "schema_version": 1,
     "version_name": "4.0.1",
     "version_code": "59201",
-    "release_date": "2026-10-19",
+    "release_date": "2026-11-11",
     "sha256": "353063e3e80d447eed0da37b91a97ba563f58577c76f51b5b3bc578d3a3f1fdf",
-    "changelog": [],
+    "changelog": [
+        "体验优化与问题修复"
+    ],
     "colors": {
         "White": "White",
         "ime_key_back_icon_color": "ime_key_back_icon_color",
