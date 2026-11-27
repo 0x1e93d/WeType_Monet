@@ -8,6 +8,10 @@ runs:
       with:
         python-version: "3.11"
 
+    - name: Install Python dependencies
+      shell: bash
+      run: python -m pip install --upgrade pip pyelftools==0.33
+
     - name: Prefer IPv4
       shell: bash
       run: echo 'precedence ::ffff:0:0/96  100' | sudo tee -a /etc/gai.conf

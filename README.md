@@ -144,6 +144,8 @@ KernelSU 动态包还支持以下功能：
 
 官方 APK 下载到 `out/apk/official.apk`，解包到 `out/apk/decoded/`。脚本先解析资源映射，再替换解包目录中的主题资源并重打包为 Monet APK。
 
+微信输入法 4.0.1 起会在 `:hld` 进程里校验 APK 签名，发现与官方不一致时枚举 `/proc`、杀掉同 uid 进程并主动崩溃。解包后、重打包前，`scripts/guard.py` 会按语义特征定位该逻辑并把函数入口改成 `ret`，使独立 APK 可以正常使用；签名扫描本身不受影响。
+
 Overlay 清单由构建脚本生成，和主题资源一起放入 `out/overlay/`。编译签名后，将 Overlay APK 复制到 `out/module/files/`，与模块模板一起打包。
 
 重新解包、生成 Overlay 和组装模块时，会分别重建对应工作目录，避免旧文件残留。`assets/drawable/` 中的源文件独立保留，发布文件名和模块 ZIP 内部结构保持一致。
@@ -155,6 +157,7 @@ Overlay 清单由构建脚本生成，和主题资源一起放入 `out/overlay/`
 | [scripts/build.py](scripts/build.py) | 编排构建流程 |
 | [scripts/upstream.py](scripts/upstream.py) | 下载官方 APK，解析版本和更新日志 |
 | [scripts/resources.py](scripts/resources.py) | 解析资源映射，生成和替换主题资源 |
+| [scripts/guard.py](scripts/guard.py) | 定位并关闭签名校验触发的自毁逻辑（so 补丁） |
 | [scripts/packaging.py](scripts/packaging.py) | 查找工具链，打包和签名产物 |
 | [scripts/release.py](scripts/release.py) | 管理模块版本、发布状态和更新清单 |
 | [scripts/paths.py](scripts/paths.py) | 集中管理项目路径 |
@@ -183,7 +186,13 @@ Overlay 清单由构建脚本生成，和主题资源一起放入 `out/overlay/`
 <details>
 <summary>本地构建</summary>
 
-需要 Python 3.11 及以上、Java 17、Android SDK、Apktool 和 Bouncy Castle Provider。工具版本可参考 [自动更新工作流](.github/workflows/auto-update.yml)。
+需要 Python 3.11 及以上、Java 17、Android SDK、Apktool 和 Bouncy Castle Provider。Python 依赖安装：
+
+```shell
+python -m pip install pyelftools
+```
+
+工具版本可参考 [自动更新工作流](.github/workflows/auto-update.yml)。
 
 配置 `JAVA_HOME` 和 `ANDROID_HOME`，将 `apktool` 加入 `PATH`，并将 `BCPROV_JAR_PATH` 指向 Provider JAR 文件。
 

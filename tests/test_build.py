@@ -107,10 +107,20 @@ class BuildPipelineTests(BuildTestCase):
             patch.dict(os.environ, {**self.build_environment, **environment}),
             patch.object(upstream.urllib.request, "urlopen", side_effect=self.open_upstream_url),
             patch.object(subprocess, "run", side_effect=self.run_build_command),
+            patch.object(build.guard, "patch_decoded_tree", return_value=[]) as guard_patch,
+            patch.object(build.guard, "verify_patched_apk") as guard_verify,
             redirect_stdout(output),
         ):
             build.main(self.paths)
+        self.guard_patch_mock = guard_patch
+        self.guard_verify_mock = guard_verify
         return output.getvalue()
+
+    def test_build_runs_guard_patch_before_release(self):
+        self.run_build()
+
+        self.guard_patch_mock.assert_called_once()
+        self.guard_verify_mock.assert_called_once()
 
     def test_force_build_generates_artifacts_and_release_state(self):
         self.run_build()

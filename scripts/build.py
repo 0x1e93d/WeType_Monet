@@ -9,7 +9,7 @@ from pathlib import Path
 if __package__ in (None, ""):
     sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from scripts import packaging, release, resources, upstream
+from scripts import guard, packaging, release, resources, upstream
 from scripts.paths import BuildPaths
 
 
@@ -32,10 +32,13 @@ def main(paths: BuildPaths | None = None):
             return
         sha256_str, apk_code, apk_name, release_date, changelog = build_input
 
-        print("\n[+] ===== 阶段 2: 解析 ID & 生成版本映射 =====")
+        print("\n[+] ===== 阶段 2: 关闭签名校验自毁逻辑（so 补丁） =====")
+        guard_patches = guard.patch_decoded_tree(paths, apk_code)
+
+        print("\n[+] ===== 阶段 3: 解析 ID & 生成版本映射 =====")
         config_path = resources.generate_version_config(paths, sha256_str, apk_code, apk_name, release_date, changelog)
 
-        print("\n[+] ===== 阶段 3: 生成 Overlay 资源并编译签名 APK =====")
+        print("\n[+] ===== 阶段 4: 生成 Overlay 资源并编译签名 APK =====")
         resources.sync_src_resources(paths, config_path)
         packaging.prepare_template(paths)
         previous_state = release.get_latest_build_state(paths)
@@ -49,8 +52,9 @@ def main(paths: BuildPaths | None = None):
             paths,
             config_path, apk_name, apk_code, next_module_version, signing_keystore
         )
+        guard.verify_patched_apk(monet_apk_path, guard_patches)
 
-        print("\n[+] ===== 阶段 4: 打包 Magisk/KernelSU 模块 ZIP =====")
+        print("\n[+] ===== 阶段 5: 打包 Magisk/KernelSU 模块 ZIP =====")
         zip_path = packaging.create_module_zip(paths, next_module_version)
         official_apk_path = packaging.archive_official_apk(paths, apk_name, apk_code)
         release.write_build_metadata(
