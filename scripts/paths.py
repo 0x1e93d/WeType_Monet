@@ -65,8 +65,16 @@ class BuildPaths:
         return self.project_root / "wetype_monet.json"
 
     @property
+    def beta_update_json_path(self) -> Path:
+        return self.project_root / "wetype_monet_beta.json"
+
+    @property
     def ksu_changelog_path(self) -> Path:
         return self.project_root / "CHANGELOG.md"
+
+    @property
+    def beta_changelog_path(self) -> Path:
+        return self.project_root / "CHANGELOG_BETA.md"
 
     @property
     def download_apk_path(self) -> Path:

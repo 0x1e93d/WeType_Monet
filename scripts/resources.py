@@ -151,7 +151,13 @@ def resolve_theme_resources(
 
 def generate_version_config(
     paths: BuildPaths,
-    sha256_str: str, apk_code: str, apk_name: str, release_date: str, changelog: list[str]
+    sha256_str: str,
+    apk_code: str,
+    apk_name: str,
+    build: str,
+    download_url: str,
+    release_date: str,
+    changelog: list[str],
 ) -> Path:
     """保存上游信息和资源名称映射，主题值统一从 theme.json 读取。"""
     theme = load_theme_config(paths)
@@ -165,11 +171,14 @@ def generate_version_config(
 
     safe_name = re.sub(r'[\\/:*?"<>|\s]', "_", apk_name)
     safe_code = re.sub(r'[\\/:*?"<>|\s]', "_", apk_code)
-    filename = f"{safe_name}({safe_code}).json" if safe_code else f"{safe_name}.json"
+    safe_build = re.sub(r'[\\/:*?"<>|\s]', "_", build)
+    filename = f"{safe_name}.{safe_code}.{safe_build}.json"
     payload = {
         "schema_version": 1,
         "version_name": apk_name,
         "version_code": apk_code,
+        "build": build,
+        "download_url": download_url,
         "release_date": release_date,
         "sha256": sha256_str,
         "changelog": changelog,

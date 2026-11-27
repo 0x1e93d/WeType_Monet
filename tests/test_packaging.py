@@ -23,20 +23,30 @@ class PackagingTests(BuildTestCase):
     def test_archive_official_apk_uses_release_filename(self):
         self.paths.download_apk_path.parent.mkdir(parents=True, exist_ok=True)
         self.paths.download_apk_path.write_bytes(b"official-apk")
-        config_path = self.paths.mapping_config_dir / "3.5.2(55201).json"
-        zip_path = self.paths.out_dir / "Wetype_Monet_v2.zip"
+        config_path = self.paths.mapping_config_dir / "3.5.2.55201.1422.json"
+        zip_path = self.paths.out_dir / "Wetype_Monet_3.5.2.55201.1422_v2.zip"
         config_path.write_text("{}", encoding="utf-8")
         zip_path.write_bytes(b"module-zip")
 
-        archive_path = packaging.archive_official_apk(self.paths, "3.5.2", "55201")
-        monet_path = self.paths.out_dir / "Wetype_Monet_3.5.2(55201)_v2.apk"
+        archive_path = packaging.archive_official_apk(self.paths, "3.5.2", "55201", "1422")
+        monet_path = self.paths.out_dir / "Wetype_Monet_3.5.2.55201.1422_v2.apk"
         monet_path.write_bytes(b"monet-apk")
         release.write_build_metadata(
             self.paths,
-            "v2", "2", "3.5.2", "55201", config_path, zip_path, archive_path, monet_path
+            "v2",
+            "2",
+            "3.5.2",
+            "55201",
+            "1422",
+            "https://example.com/wxkb_1422.apk",
+            False,
+            config_path,
+            zip_path,
+            archive_path,
+            monet_path,
         )
 
-        self.assertEqual(archive_path.name, "Wetype_3.5.2(55201).apk")
+        self.assertEqual(archive_path.name, "Wetype_3.5.2.55201.1422.apk")
         self.assertEqual(archive_path.read_bytes(), b"official-apk")
         metadata = json.loads(self.paths.build_metadata_path.read_text(encoding="utf-8"))
         self.assertEqual(metadata["official_apk_file"], archive_path.name)

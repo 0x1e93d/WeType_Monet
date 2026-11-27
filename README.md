@@ -40,14 +40,14 @@
 
 | 安装方式 | 使用条件 | 下载文件 |
 | :--- | :--- | :--- |
-| Magisk/KernelSU 模块 | Android 14 及以上，具备 Magisk 或 KernelSU 环境，已安装官方微信输入法 | `Wetype_Monet_vN.zip` |
-| 独立 Monet APK | 无需 Root，首次安装前需卸载官方微信输入法 | `Wetype_Monet_<版本名称>(<版本号>)_vN.apk` |
+| Magisk/KernelSU 模块 | Android 14 及以上，具备 Magisk 或 KernelSU 环境，已安装官方微信输入法 | `Wetype_Monet_<版本名称>.<版本号>.<build>_vN.zip` |
+| 独立 Monet APK | 无需 Root，首次安装前需卸载官方微信输入法 | `Wetype_Monet_<版本名称>.<版本号>.<build>_vN.apk` |
 
 请核对 Release 中标注的微信输入法版本。同一 Release 同时提供构建时使用的官方原始 APK。
 
 ### Magisk/KernelSU 模块
 
-1. 下载 `Wetype_Monet_vN.zip`。
+1. 下载 `Wetype_Monet_<版本名称>.<版本号>.<build>_vN.zip`。
 2. 在 Magisk 或 KernelSU 中安装 ZIP。
 3. 首次安装完成后重启设备，再打开微信输入法。
 
@@ -67,7 +67,7 @@ KernelSU 动态包还支持以下功能：
 
 1. 备份需要保留的输入法数据。
 2. 卸载官方微信输入法。
-3. 安装 `Wetype_Monet_<版本名称>(<版本号>)_vN.apk`。
+3. 安装 `Wetype_Monet_<版本名称>.<版本号>.<build>_vN.apk`。
 
 后续使用本项目发布的 Monet APK 覆盖更新。
 
@@ -75,13 +75,13 @@ KernelSU 动态包还支持以下功能：
 
 | 文件 | 内容 |
 | :--- | :--- |
-| `Wetype_Monet_vN.zip` | Magisk/KernelSU Overlay 模块 |
-| `Wetype_Monet_<版本名称>(<版本号>)_vN.apk` | 已替换主题资源的独立安装包 |
-| `Wetype_<版本名称>(<版本号>).apk` | 官方原始安装包归档 |
+| `Wetype_Monet_<版本名称>.<版本号>.<build>_vN.zip` | Magisk/KernelSU Overlay 模块 |
+| `Wetype_Monet_<版本名称>.<版本号>.<build>_vN.apk` | 已替换主题资源的独立安装包 |
+| `Wetype_<版本名称>.<版本号>.<build>.apk` | 官方原始安装包归档 |
 
-`vN` 表示本项目的发布版本，与微信输入法自身的版本分开记录。适配版本、官方更新日志和构建信息可在对应 Release 中查看。
+`vN` 表示本项目的发布版本，Beta 使用 `vN-beta.<build>`；`<build>` 是安装包内的构建号（如 1422）。模块的 `versionCode` 为 `vN × 100000 + build`，因此 `vN` 或 build 变化都会触发更新。
 
-模块在线更新使用 [wetype_monet.json](wetype_monet.json)，更新日志见 [CHANGELOG.md](CHANGELOG.md)。
+正式通道使用 [wetype_monet.json](wetype_monet.json)，Beta 通道使用 [wetype_monet_beta.json](wetype_monet_beta.json)；更新日志分别为 [CHANGELOG.md](CHANGELOG.md) 和 [CHANGELOG_BETA.md](CHANGELOG_BETA.md)。正式版发布时 Beta 通道会指向正式版，Beta 用户可自动转正。
 
 ## 常见问题
 
@@ -111,15 +111,13 @@ KernelSU 动态包还支持以下功能：
 
 | 方式 | 触发与行为 |
 | :--- | :--- |
-| 自动更新 | 每天北京时间 06:17 检查官方 APK，versionCode 提升或缺少有效发布状态时构建发布。 |
-| 手动更新 | 运行 [Manual force update](https://github.com/0x1e93d/WeType_Monet/actions/workflows/manual-update.yml)，强制生成并发布新版本；更新说明取上次发布以来的 git 提交记录，可选填写官方 APK 直链（留空使用默认下载地址）。 |
-| 测试构建 | 运行 [Test build](https://github.com/0x1e93d/WeType_Monet/actions/workflows/test-build.yml)，强制构建，产物保留一天，不发布。 |
+| 自动发布 | 每天北京时间 06:17 定时检查，也可手动触发补跑；build 号变化或缺少有效发布状态时构建发布，versionCode 提升视为正式版，否则为测试版（预发布）。 |
+| 强制更新 | 运行 [Force update](https://github.com/0x1e93d/WeType_Monet/actions/workflows/update.yml)，强制生成新的模块版本，发布频道沿用上一次（上次是预发布则仍为预发布）。 |
+| 测试构建 | 运行 [Test build](https://github.com/0x1e93d/WeType_Monet/actions/workflows/test.yml)，可填写官方 APK 直链，只构建不发布，产物保留一天。 |
 
-修改主题资源或代码后，通过手动更新发布。在仓库 **Actions → Manual force update → Run workflow** 中，勾选“强制生成新的模块版本”后运行；发布说明会自动读取上次发布以来的 git 提交记录，官方版本未变化时只展示本次调整。官方 APK 直链可选，填写后从该地址下载，留空则使用默认下载地址。
+修改主题资源或代码后，通过强制更新发布；发布说明会自动读取上次发布以来的 git 提交记录。手动发布与定时发布共用同一套构建和发布流程，构建前运行 Python 测试及 Python、Shell 语法检查。
 
-自动更新与手动更新共用测试、构建和发布流程，构建前运行 Python 测试及 Python、Shell 语法检查。
-
-测试构建只上传官方 APK、Monet APK 和模块 ZIP，在对应运行记录的 **Artifacts** 中下载。三个工作流复用相同的构建工具链配置。
+测试构建可指定官方 APK 直链，只上传官方 APK、Monet APK 和模块 ZIP，在对应运行记录的 **Artifacts** 中下载。三个工作流复用相同的构建工具链配置。
 
 ## 开发说明
 
@@ -192,7 +190,7 @@ Overlay 清单由构建脚本生成，和主题资源一起放入 `out/overlay/`
 python -m pip install pyelftools
 ```
 
-工具版本可参考 [自动更新工作流](.github/workflows/auto-update.yml)。
+工具版本可参考 [发布工作流](.github/workflows/release.yml)。
 
 配置 `JAVA_HOME` 和 `ANDROID_HOME`，将 `apktool` 加入 `PATH`，并将 `BCPROV_JAR_PATH` 指向 Provider JAR 文件。
 
@@ -202,7 +200,7 @@ python -m pip install pyelftools
 python scripts/build.py
 ```
 
-也可使用 `python -m scripts.build`。需要强制构建时，将环境变量 `FORCE_BUILD` 设为 `true`。
+也可使用 `python -m scripts.build`。需要强制构建时，将环境变量 `FORCE_VERSION` 设为 `true`；只测试不发布时，将 `DRY_RUN` 设为 `true`。
 
 </details>
 

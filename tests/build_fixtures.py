@@ -80,7 +80,7 @@ class BuildTestCase(unittest.TestCase):
         self.paths.theme_config_path.write_text(json.dumps(payload), encoding="utf-8")
         return payload
 
-    def _write_latest_state(self, apk_name="1.0", apk_code="1", apk_sha="a", base_sha="b"):
+    def _write_latest_state(self, apk_name="1.0", apk_code="1", apk_sha="a", base_sha="b", apk_build="100"):
         config_path = self.paths.mapping_config_dir / f"{apk_name}({apk_code}).json"
         config_path.write_text("{}", encoding="utf-8")
         state = {
@@ -90,7 +90,9 @@ class BuildTestCase(unittest.TestCase):
             "upstream": {
                 "version_name": apk_name,
                 "version_code": apk_code,
+                "build": apk_build,
                 "sha256": apk_sha * 64,
+                "download_url": f"https://example.com/wxkb_{apk_build}.apk",
                 "release_date": "2026-01-01",
                 "config_file": config_path.relative_to(self.paths.config_dir).as_posix(),
             },
