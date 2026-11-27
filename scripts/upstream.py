@@ -189,14 +189,17 @@ def fetch_changelog_info() -> tuple[str, str, list[str]]:
 
 def download_and_decompile_apk(
     paths: BuildPaths,
-    *, force_build: bool = False
+    *,
+    force_build: bool = False,
+    apk_url: str | None = None,
 ) -> tuple[str, str, str, str, list[str]] | None:
     """下载并解包 APK"""
     web_version, release_date, changelog = fetch_changelog_info()
 
-    print(f"[*] 正在下载最新官方 APK: {APK_URL}")
+    download_url = apk_url or APK_URL
+    print(f"[*] 正在下载官方 APK: {download_url}")
     paths.download_apk_path.parent.mkdir(parents=True, exist_ok=True)
-    req = urllib.request.Request(APK_URL, headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'})
+    req = urllib.request.Request(download_url, headers={'User-Agent': 'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36'})
     with urllib.request.urlopen(req) as resp, open(paths.download_apk_path, 'wb') as out_file:
         shutil.copyfileobj(resp, out_file)
 

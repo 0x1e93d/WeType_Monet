@@ -27,12 +27,13 @@ def main(paths: BuildPaths | None = None):
     try:
         print("[+] ===== 阶段 1: 检查更新 & 检索/解包 APK =====")
         force_build = os.environ.get("FORCE_BUILD", "").strip().lower() in {"1", "true", "yes"}
+        apk_url = os.environ.get("APK_URL", "").strip()
         latest_state = release.get_latest_build_state(paths)
         git_changes: list[str] = []
         if force_build:
             since_tag = (latest_state or {}).get("release", {}).get("tag")
             git_changes = release.get_git_changes(since_tag)
-        build_input = upstream.download_and_decompile_apk(paths, force_build=force_build)
+        build_input = upstream.download_and_decompile_apk(paths, force_build=force_build, apk_url=apk_url or None)
         if build_input is None:
             return
         sha256_str, apk_code, apk_name, release_date, changelog = build_input

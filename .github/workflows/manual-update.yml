@@ -8,6 +8,11 @@ on:
         required: true
         type: boolean
         default: true
+      apk_url:
+        description: "官方 APK 直链（可选，留空使用默认下载地址）"
+        required: false
+        type: string
+        default: ""
 
 permissions:
   contents: write
@@ -18,4 +23,5 @@ jobs:
     uses: ./.github/workflows/auto-update.yml
     with:
       force_build: true
+      apk_url: ${{ inputs.apk_url }}
     secrets: inherit

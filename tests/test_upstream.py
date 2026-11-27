@@ -31,6 +31,28 @@ class UpstreamTests(BuildTestCase):
         self.assertEqual(self.paths.download_apk_path.read_bytes(), apk_content)
         self.assertEqual(self.paths.latest_config_path.read_text(encoding="utf-8"), previous_state)
 
+    def test_download_uses_custom_apk_url(self):
+        self._write_latest_state(apk_name="9.9.9", apk_code="999")
+        requests = []
+
+        def fake_urlopen(request, **kwargs):
+            requests.append(request.full_url)
+            return BytesIO(b"custom-apk")
+
+        with (
+            patch.object(upstream, "fetch_changelog_info", return_value=("9.9.9", "2026-01-01", [])),
+            patch.object(upstream.urllib.request, "urlopen", side_effect=fake_urlopen),
+            patch.object(upstream, "read_apk_version", return_value=("9.9.9", "999")),
+            patch.object(upstream.subprocess, "run", side_effect=AssertionError("版本未提升时不应解包")),
+            redirect_stdout(StringIO()),
+        ):
+            result = upstream.download_and_decompile_apk(
+                self.paths, apk_url="https://example.com/wetype.apk"
+            )
+
+        self.assertIsNone(result)
+        self.assertEqual(requests[0], "https://example.com/wetype.apk")
+
     def test_read_apk_version_parses_aapt2_output(self):
         stdout = (
             "package: name='com.tencent.wetype' versionCode='59201' "

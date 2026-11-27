@@ -13,6 +13,11 @@ on:
         required: false
         type: boolean
         default: false
+      apk_url:
+        description: "官方 APK 直链（可选，留空使用默认下载地址）"
+        required: false
+        type: string
+        default: ""
 
 permissions: {}
 
@@ -71,6 +76,7 @@ jobs:
       - name: Build module
         env:
           FORCE_BUILD: ${{ inputs.force_build || false }}
+          APK_URL: ${{ inputs.apk_url }}
         run: python scripts/build.py
 
       - name: Read build metadata
