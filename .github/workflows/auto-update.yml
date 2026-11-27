@@ -98,19 +98,6 @@ jobs:
           metadata = json.loads(Path("out/internal/build-metadata.json").read_text(encoding="utf-8"))
           for key, value in metadata.items():
               set_output(key, value)
-
-          version_mapping = json.loads(
-              (Path("config") / metadata["config_file"]).read_text(encoding="utf-8")
-          )
-          changelog = [
-              str(item).replace("\r", " ").replace("\n", " ").strip()
-              for item in version_mapping.get("changelog", [])
-              if str(item).strip()
-          ]
-          set_output(
-              "official_changelog",
-              "\n".join(f"- {item}" for item in changelog) or "- 暂无可展示的官方更新日志。",
-          )
           PY
 
       - name: Upload build artifacts
@@ -129,24 +116,7 @@ jobs:
         with:
           tag_name: ${{ steps.metadata.outputs.release_tag }}
           name: ${{ steps.metadata.outputs.release_title }}
-          body: |
-            ## 微信输入法 Monet
-
-            已适配微信输入法 ${{ steps.metadata.outputs.apk_name }} (${{ steps.metadata.outputs.apk_code }})。
-
-            ### 微信输入法官方更新日志
-            ${{ steps.metadata.outputs.official_changelog }}
-
-            ### 下载
-            - `${{ steps.metadata.outputs.zip_file }}`：用于 Magisk/KernelSU 的 Monet Overlay 模块。
-            - `${{ steps.metadata.outputs.monet_apk_file }}`：保持官方包名、写入 Monet 资源的独立安装包。
-            - `${{ steps.metadata.outputs.official_apk_file }}`：本次构建下载的官方微信输入法原始 APK。
-
-            ### 构建信息
-            - 模块版本：${{ steps.metadata.outputs.module_version }}（版本代码：${{ steps.metadata.outputs.version_code }}）
-            - 构建时间：${{ steps.metadata.outputs.build_time }}
-            - 构建来源：${{ inputs.force_build && '手动更新' || '自动更新' }}
-            - 资源映射：`config/${{ steps.metadata.outputs.config_file }}`
+          body_path: out/internal/release-notes.md
           files: |
             out/${{ steps.metadata.outputs.zip_file }}
             out/${{ steps.metadata.outputs.official_apk_file }}

@@ -112,10 +112,10 @@ KernelSU 动态包还支持以下功能：
 | 方式 | 触发与行为 |
 | :--- | :--- |
 | 自动更新 | 每天北京时间 06:17 检查官方 APK，版本名或版本号提升，或缺少有效发布状态时构建发布。 |
-| 手动更新 | 运行 [Manual force update](https://github.com/0x1e93d/WeType_Monet/actions/workflows/manual-update.yml)，强制生成并发布新版本。 |
+| 手动更新 | 运行 [Manual force update](https://github.com/0x1e93d/WeType_Monet/actions/workflows/manual-update.yml)，强制生成并发布新版本；更新说明取上次发布以来的 git 提交记录。 |
 | 测试构建 | 运行 [Test build](https://github.com/0x1e93d/WeType_Monet/actions/workflows/test-build.yml)，强制构建，产物保留一天，不发布。 |
 
-修改主题资源或代码后，通过手动更新发布。在仓库 **Actions → Manual force update → Run workflow** 中，勾选“强制生成新的模块版本”后运行。
+修改主题资源或代码后，通过手动更新发布。在仓库 **Actions → Manual force update → Run workflow** 中，勾选“强制生成新的模块版本”后运行；发布说明会自动读取上次发布以来的 git 提交记录，官方版本未变化时只展示本次调整。
 
 自动更新与手动更新共用测试、构建和发布流程，构建前运行 Python 测试及 Python、Shell 语法检查。
 

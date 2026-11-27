@@ -45,6 +45,10 @@ class BuildPaths:
         return self.out_dir / "internal" / "build-metadata.json"
 
     @property
+    def release_notes_path(self) -> Path:
+        return self.out_dir / "internal" / "release-notes.md"
+
+    @property
     def theme_config_path(self) -> Path:
         return self.config_dir / "theme.json"
 

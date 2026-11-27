@@ -42,7 +42,7 @@ def get_monet_apk_filename(apk_name: str, apk_code: str, module_version: int) ->
 
 
 def get_release_title(apk_name: str, module_version: int) -> str:
-    return f"微信输入法_{apk_name}_{format_module_version(module_version)}"
+    return f"微信输入法 {apk_name} · Monet {format_module_version(module_version)}"
 
 
 def china_timezone():
@@ -197,42 +197,129 @@ def write_latest_config(
     temp_path.replace(paths.latest_config_path)
 
 
+def _write_text(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path = path.with_name(f"{path.name}.tmp")
+    temp_path.write_text(text, encoding="utf-8")
+    temp_path.replace(path)
+
+
+def _official_entries(changelog: list[str]) -> list[str]:
+    return [re.sub(r"\s+", " ", str(item)).strip() for item in changelog if str(item).strip()]
+
+
+def get_git_changes(since_tag: str | None) -> list[str]:
+    """读取上次发布以来的提交标题。"""
+    if not since_tag:
+        return []
+    try:
+        result = subprocess.run(
+            ["git", "log", f"{since_tag}..HEAD", "--no-merges", "--pretty=format:%s"],
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            errors="ignore",
+            check=False,
+        )
+    except OSError:
+        return []
+    if result.returncode != 0:
+        return []
+    return [
+        line.strip()
+        for line in (result.stdout or "").splitlines()
+        if line.strip() and not line.strip().startswith("chore: 更新发布状态与资源映射")
+    ]
+
+
 def write_update_changelog(
     paths: BuildPaths,
     module_version: int,
     apk_name: str,
     apk_code: str,
-    release_date: str,
+    changelog: list[str],
+    changes: list[str] | None = None,
+    *,
+    include_official: bool = True,
+):
+    """写入 KernelSU 更新日志（精简版）。"""
+    version = format_module_version(module_version)
+    entries = _official_entries(changelog)
+    lines = [f"## {version} · 微信输入法 {apk_name} ({apk_code})", "", "### 更新内容"]
+    if include_official:
+        if entries:
+            lines.append("- 官方更新：")
+            lines.extend(f"  - {entry}" for entry in entries)
+        else:
+            lines.append("- 官方更新：官方未提供该版本更新日志。")
+    if changes:
+        lines.append("- 本次调整：")
+        lines.extend(f"  - {change}" for change in changes)
+    lines.extend(["", "### 安装", "- 模块直接刷入后重启；独立 APK 首次安装需卸载官方版。", ""])
+    _write_text(paths.ksu_changelog_path, "\n".join(lines))
+
+
+def write_release_notes(
+    paths: BuildPaths,
+    module_version: int,
+    apk_name: str,
+    apk_code: str,
     apk_sha256: str,
     changelog: list[str],
+    config_path: Path,
+    zip_path: Path,
+    official_apk_path: Path,
+    monet_apk_path: Path,
+    changes: list[str] | None = None,
+    *,
+    include_official: bool = True,
 ):
-    """写入 KernelSU 更新日志。"""
+    """写入 GitHub Release 说明（完整版）。"""
     version = format_module_version(module_version)
-    entries = [
-        re.sub(r"\s+", " ", str(entry)).strip()
-        for entry in changelog
-        if str(entry).strip()
-    ]
+    entries = _official_entries(changelog)
+    config_relative_path = config_path.relative_to(paths.config_dir).as_posix()
     lines = [
-        "# WeType Monet",
+        f"## 微信输入法 Monet {version}",
         "",
-        f"- **Version:** `{version}`",
-        f"- **VersionCode:** `{module_version}`",
-        f"- **WeType:** `{apk_name} ({apk_code})`",
-        f"- **Official release date:** `{release_date or 'Unknown'}`",
-        f"- **Build time:** `{current_build_time()}`",
-        f"- **SHA256:** `{apk_sha256}`",
+        f"适配微信输入法 **{apk_name} ({apk_code})**。",
         "",
-        "## Official Changelog",
-        "",
+        "### 更新内容",
     ]
-    lines.extend(f"- {entry}" for entry in entries)
-    if not entries:
-        lines.append("- No matching official changelog is available.")
-
-    temp_path = paths.ksu_changelog_path.with_name(f"{paths.ksu_changelog_path.name}.tmp")
-    temp_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    temp_path.replace(paths.ksu_changelog_path)
+    if include_official:
+        if entries:
+            lines.append("- 官方更新：")
+            lines.extend(f"  - {entry}" for entry in entries)
+        else:
+            lines.append("- 官方更新：官方未提供该版本更新日志。")
+    if changes:
+        lines.append("- 本次调整：")
+        lines.extend(f"  - {change}" for change in changes)
+    lines.extend(
+        [
+            "",
+            "### 安装",
+            f"- Magisk / KernelSU：刷入 `{zip_path.name}` 后重启；动态模块支持热更新。",
+            f"- 独立 APK：`{monet_apk_path.name}`；首次从官方版切换需备份数据并卸载（签名不同）。",
+            "",
+            "### 文件说明",
+            "| 文件 | 用途 |",
+            "| --- | --- |",
+            f"| `{zip_path.name}` | Magisk / KernelSU Overlay 模块 |",
+            f"| `{monet_apk_path.name}` | 独立安装包（含 Monet 资源） |",
+            f"| `{official_apk_path.name}` | 官方原始 APK |",
+            "",
+            "<details>",
+            "<summary>构建信息</summary>",
+            "",
+            f"- 模块版本：{version}（版本代码 {module_version}）",
+            f"- 构建时间：{current_build_time()}",
+            f"- 官方 APK SHA256：`{apk_sha256}`",
+            f"- 资源映射：`config/{config_relative_path}`",
+            "</details>",
+            "",
+        ]
+    )
+    _write_text(paths.release_notes_path, "\n".join(lines))
 
 
 def write_update_json(paths: BuildPaths, module_version: int):
@@ -253,8 +340,7 @@ def generate_module_prop(paths: BuildPaths, module_version: int) -> tuple[str, s
     """生成模块属性清单 module.prop。"""
     version_name = format_module_version(module_version)
     version_code = str(module_version)
-    build_time = current_build_time()
-    description = f"{MODULE_DESCRIPTION} [构建时间: {build_time}]"
+    description = MODULE_DESCRIPTION
 
     lines = [
         f"id={MODULE_ID}",

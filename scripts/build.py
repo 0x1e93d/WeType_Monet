@@ -27,10 +27,17 @@ def main(paths: BuildPaths | None = None):
     try:
         print("[+] ===== 阶段 1: 检查更新 & 检索/解包 APK =====")
         force_build = os.environ.get("FORCE_BUILD", "").strip().lower() in {"1", "true", "yes"}
+        latest_state = release.get_latest_build_state(paths)
+        git_changes: list[str] = []
+        if force_build:
+            since_tag = (latest_state or {}).get("release", {}).get("tag")
+            git_changes = release.get_git_changes(since_tag)
         build_input = upstream.download_and_decompile_apk(paths, force_build=force_build)
         if build_input is None:
             return
         sha256_str, apk_code, apk_name, release_date, changelog = build_input
+        version_changed = latest_state is None or release.should_build(apk_name, apk_code, latest_state)
+        include_official = version_changed or not git_changes
 
         print("\n[+] ===== 阶段 2: 关闭签名校验自毁逻辑（so 补丁） =====")
         guard_patches = guard.patch_decoded_tree(paths, apk_code)
@@ -83,9 +90,23 @@ def main(paths: BuildPaths | None = None):
             next_module_version,
             apk_name,
             apk_code,
-            release_date,
+            changelog,
+            git_changes,
+            include_official=include_official,
+        )
+        release.write_release_notes(
+            paths,
+            next_module_version,
+            apk_name,
+            apk_code,
             sha256_str,
             changelog,
+            config_path,
+            zip_path,
+            official_apk_path,
+            monet_apk_path,
+            git_changes,
+            include_official=include_official,
         )
         release.write_update_json(paths, next_module_version)
 
